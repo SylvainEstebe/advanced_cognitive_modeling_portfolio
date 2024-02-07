@@ -1,1 +1,1 @@
-# advanced_cognitive_modeling_portfolio1
+# Repository for the course Advanced Cognitive Modeling as part of the masters degree in Cognitive Science at Aarhus University
