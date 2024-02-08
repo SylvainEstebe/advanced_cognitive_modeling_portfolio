@@ -123,7 +123,7 @@ step_n_matching_pennies <- function(history, n, agent_matcher, agent_capitalist)
     ## print(row)
     ## print(result[1:row,])
     ## print(result[1:(row-1),])
-    result[row,] <- step_matching_pennies(result[1:(row-1),], agent_matcher, agent_capitalist)
+    result[row,] <- step_matching_pennies(result[(row-1),], agent_matcher, agent_capitalist)
     #print(result[1:row,])
   }
   return(result)
@@ -155,9 +155,26 @@ tom <- function(model, other_feedback) {
 }
 
 
-init_random() |>
-## tibble(matcher = 0, capitalist = 0) |>
-  step_n_matching_pennies(10,
-    make_agent(noisy_wsls, tibble(theta=1), feedback_matcher),
-    make_agent(tom(noisy_wsls, feedback_matcher), tibble(theta=1, sigma=0), feedback_capitalist)) |>
-  mutate(winner = ifelse(matcher == capitalist, "matcher", "capitalist"))
+do_sim <- function(theta, sigma, n) {
+  init_random() |>
+    step_n_matching_pennies(
+        n,
+        make_agent(noisy_wsls, tibble(theta = theta), feedback_matcher),
+        make_agent(tom(noisy_wsls, feedback_matcher), tibble(theta = theta, sigma = sigma), feedback_capitalist)
+    ) |>
+    mutate(winner = matcher == capitalist)
+}
+
+
+sim_res <- expand_grid(
+  theta = seq(0.5, 1, by = 0.1),
+  sigma = seq(0.5, 1, by = 0.1)) |>
+  #sample_n(100) |>
+  mutate(result = map2(theta, sigma, do_sim, 100))
+
+sim_res |>
+  unnest(result) |>
+  group_by(theta, sigma) |>
+  summarise(wins = mean(winner)) |>
+  ggplot() +
+  geom_tile(aes(theta, sigma, fill = wins))
