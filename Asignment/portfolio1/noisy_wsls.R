@@ -1,6 +1,9 @@
 
 
 library(tidyverse)
+library(furrr)
+
+plan(multicore(workers = 4))
 
 # an agent is a function from (history, parameters) -> output
 
@@ -155,22 +158,42 @@ tom <- function(model, other_feedback) {
 }
 
 
-do_sim <- function(theta, sigma, n) {
+
+do_sim <- function(theta1, theta2, sigma, n) {
   init_random() |>
     step_n_matching_pennies(
         n,
-        make_agent(noisy_wsls, tibble(theta = theta), feedback_matcher),
-        make_agent(tom(noisy_wsls, feedback_matcher), tibble(theta = theta, sigma = sigma), feedback_capitalist)
+        make_agent(noisy_wsls, tibble(theta=theta1), feedback_matcher),
+        make_agent(tom(noisy_wsls, feedback_matcher), tibble(theta=theta2, sigma=sigma), feedback_capitalist)
     ) |>
     mutate(winner = matcher == capitalist)
 }
 
 
 sim_res <- expand_grid(
-  theta = seq(0.5, 1, by = 0.1),
+  theta1 = seq(0.5, 1, by = 0.1),
+  theta2 = seq(0.5, 1, by = 0.1),
   sigma = seq(0.5, 1, by = 0.1)) |>
   #sample_n(100) |>
-  mutate(result = map2(theta, sigma, do_sim, 100))
+  mutate(result = future_pmap(list(theta1, theta2, sigma), do_sim, 500, .options = furrr_options(seed = TRUE)))
+
+
+cum_winrate <- function(res) {
+  cumsum(res) / 1:length(res)
+}
+
+## mutate(sim_res, winrate = map(result, cum_winrate)) |>
+##   unnest(winrate)
+
+sim_res |>
+  unnest(result) |>
+  group_by(theta1, theta2, sigma) |>
+  mutate(i = 1:n(),
+         winrate = cum_winrate(winner)) |>
+  ggplot() +
+  geom_line(aes(i, winrate, color = factor(sigma), group = sigma)) +
+  facet_grid(theta1 ~ theta2)
+
 
 sim_res |>
   unnest(result) |>
