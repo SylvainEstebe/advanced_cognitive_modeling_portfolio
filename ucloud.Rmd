@@ -2,7 +2,9 @@
 title: "Installing and using R environment on ucloud"
 author: "Malte Lau Petersen"
 date: "2024-02-13"
-output: html_document
+output:
+  md_document:
+    variant: markdown_github
 ---
 
 # R environments
