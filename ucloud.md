@@ -61,3 +61,11 @@ if you end up installing new packages, finish with
 install.packages(...)
 renv::snapshot()
 ```
+
+# Extra explanations
+
+-   `RENV_PATHS_CACHE` is where renv saves the packages you install –
+    might as well put them somewhere not-so-temporary
+-   `options("renv.consent" = TRUE)` tells renv not to ask you to
+    confirm that you want to use environments every time (it forgets
+    your answer when you make a new ucloud session otherwise)
