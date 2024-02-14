@@ -1,0 +1,12 @@
+
+digraph {
+  theta1[label=<θ<SUB>1</SUB>>,peripheries=2]
+  choice1[label="choice", style=filled]
+  feedback[label="previous result",style=filled]
+
+  feedback -> choice1
+subgraph cluster_WSLS {
+  label = "WSLS"
+  theta1 -> choice1
+}
+}
