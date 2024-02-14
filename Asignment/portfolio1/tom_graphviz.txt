@@ -1,0 +1,19 @@
+
+digraph {
+  theta2[label=<θ<SUB>1</SUB>>,peripheries=2]
+  theta3[label=<θ<SUB>2</SUB>>,peripheries=2]
+  choice2[label="estimated choice"]
+  choice3[label="choice", style=filled]
+  feedback[label="previous result",style=filled]
+subgraph cluster_TOM {
+  label = "ToM"
+  subgraph cluster_estimated_WSLS {
+  label = "Estimated WSLS"
+  theta2 -> choice2
+}
+  choice2 -> choice3
+  theta3 -> choice3
+}
+
+  feedback -> choice2
+}
