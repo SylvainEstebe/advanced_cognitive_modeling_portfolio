@@ -137,10 +137,10 @@ init_random <- function() {
          capitalist = rbinom(1,1,.5))
 }
 
-init_random() |>
-  step_n_matching_pennies(5,
-                          make_agent(noisy_wsls, tibble(theta=1), feedback_matcher),
-                          make_agent(noisy_wsls, tibble(theta=1), feedback_capitalist))
+## init_random() |>
+##   step_n_matching_pennies(5,
+##                           make_agent(noisy_wsls, tibble(theta=1), feedback_matcher),
+##                           make_agent(noisy_wsls, tibble(theta=1), feedback_capitalist))
 
 
 
@@ -175,7 +175,7 @@ sim_res <- expand_grid(
   theta2 = seq(0.5, 1, by = 0.1),
   sigma = seq(0.5, 1, by = 0.1)) |>
   #sample_n(100) |>
-  mutate(result = future_pmap(list(theta1, theta2, sigma), do_sim, 500, .options = furrr_options(seed = TRUE)))
+  mutate(result = future_pmap(list(theta1, theta2, sigma), do_sim, 200, .options = furrr_options(seed = TRUE)))
 
 
 cum_winrate <- function(res) {
@@ -187,12 +187,13 @@ cum_winrate <- function(res) {
 
 sim_res |>
   unnest(result) |>
+  filter(theta2 == 1) |>
   group_by(theta1, theta2, sigma) |>
   mutate(i = 1:n(),
          winrate = cum_winrate(winner)) |>
   ggplot() +
   geom_line(aes(i, winrate, color = factor(sigma), group = sigma)) +
-  facet_grid(theta1 ~ theta2)
+  facet_grid(theta1~.)
 
 
 sim_res |>
