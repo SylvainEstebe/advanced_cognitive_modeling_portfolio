@@ -43,17 +43,12 @@ updateValue <- function(value, # A vector of values for either hand
 }
 
 
-softmax_func <-  function(x, # A list with the values corresponding to each hand
-                          tau # inverse heat: How likely the agent is to stick with the choice predicted by the RL strategy
-                          ){
-  exps <- exp(x/tau)
-  probs <- exps/sum(exps)
-  
-  
-  # OLD: prob <- 1/(1 + exp(-tau * x))
-  
-  return(probs)
+softmax_func <-  function(x, tau) { 
+  exp_values <- exp(x / (1/tau))
+  prob <- exp_values / sum(exp_values)
+  return(prob)
 }
+
 
 ```
 
