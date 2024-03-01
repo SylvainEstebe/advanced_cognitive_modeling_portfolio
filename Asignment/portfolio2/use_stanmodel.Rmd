@@ -1,0 +1,95 @@
+---
+title: "param recov on sim dat"
+author: "LAURA PAABY"
+date: "2024-03-01"
+output: html_document
+---
+
+### Libraries:
+```{r}
+pacman::p_load(tidyverse,
+        here,
+        posterior,
+        cmdstanr,
+        brms, tidybayes)
+```
+
+
+### loading the model:
+```{r}
+file <- file.path("/Users/laura/Desktop/AdvCogModeling1/Stan_Models/REL2_model.stan")
+mod <- cmdstan_model(file, 
+                     cpp_options = list(stan_threads = TRUE),
+                     stanc_options = list("O1"))
+
+
+```
+
+
+```{r}
+dat <- read_csv("/Users/laura/Desktop/advanced_cognitive_modeling_portfolio1/Asignment/portfolio2/simulated_data.csv")
+n = length(dat$trial)-1
+
+#### getting it on a list format that stan actually likes :) 
+stan_data <- list(
+  trials = n,
+  choiceREL = dat$Agent1_choice[1:n], ### rigth now just taking the same length as feedback, to see if it will even work
+  feedback = dat$feedback[1:n], # trying to get around the last NA by removing it 
+  initialValue = c(dat$left_v1[1], dat$right_v2[1])
+)
+```
+
+```{r}
+# The following command calls Stan with specific options.
+samples <- mod$sample(
+  data = stan_data, 
+  seed = 123,  # a seed, so I always get the same results
+  chains = 2,  # how many chains should I fit (to check whether they give the same results)
+  parallel_chains = 2, # how many of the chains can be run in parallel?
+  threads_per_chain = 2, # distribute gradient estimations within chain across multiple cores
+  iter_warmup = 1000,  # warmup iterations through which hyperparameters (steps and step length) are adjusted
+  iter_sampling = 2000, # total number of iterations
+  refresh = 0,  # how often to show that iterations have been run
+  output_dir = "simmodels", # saves the samples as csv so it can be later loaded
+  max_treedepth = 20, # how many steps in the future to check to avoid u-turns
+  adapt_delta = 0.99, # how high a learning rate to adjust hyperparameters during warmup
+)
+
+```
+
+```{r}
+samples$save_object("/Users/laura/Desktop/advanced_cognitive_modeling_portfolio1/Asignment/portfolio2/simmodels/REL_first_try.rds")
+samples$summary() # summarize the model
+```
+
+## Visualising: 
+```{r}
+# Extract posterior samples and include sampling of the prior:
+draws_df <- as_draws_df(samples$draws())
+```
+
+```{r}
+# add a prior for theta (ugly, but we'll do better soon)
+draws_df <- draws_df %>% mutate(
+  theta_prior = rbeta(nrow(draws_df), 1, 1)
+)
+
+# Now let's plot the density for theta (prior and posterior)
+ggplot(draws_df) +
+  geom_density(aes(tau), fill = "blue", alpha = 0.3) +
+  geom_density(aes(tau_prior), fill = "red", alpha = 0.3) +
+  geom_vline(xintercept = 0.8, linetype = "dashed", color = "black", size = 1.5) +
+  ylab("Posterior Density") +
+  theme_classic()
+```
+
+```{r}
+ggplot(draws_df) +
+  geom_histogram(aes(tau_prior_preds03), color = "yellow", fill = "lightyellow", alpha = 0.2) +
+  geom_histogram(aes(tau_prior_preds07), color = "green", fill = "lightgreen", alpha = 0.2) +
+  geom_histogram(aes(tau_prior_preds09), color = "blue", fill = "lightblue", alpha = 0.2) +
+  xlab("Predicted rigth (????) out of 250 trials") +
+  ylab("Posterior Density") +
+  theme_classic()
+```
+

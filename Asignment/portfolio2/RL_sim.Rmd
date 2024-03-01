@@ -43,7 +43,7 @@ updateValue <- function(value, # A vector of values for either hand
 }
 
 
-softmax_func <-  function(x, tau) { 
+softmax_func <-  function(x, tau) { # x is the expected value for each choice, tau is the temperature parameter, the higher the temperature, the more random the choice (more exploration)
   exp_values <- exp(x / (1/tau))
   prob <- exp_values / sum(exp_values)
   return(prob)
@@ -67,7 +67,10 @@ RLAgent <- function(alpha, # Learning rate - how much weight does the agent put 
   # Softmax
   probs <- softmax_func(values,tau)
   
-  newChoice <- rbinom(1,1,probs[2]) # We get the new choice by sampling from a binomial distribution where the probability of getting one corresponds to the probability of picking the right hand
+  #New choice (deterministic)
+  #newChoice <- ifelse(probs[1]>0, 0, 1) 
+  
+  newChoice <- rbinom(1,1,1-probs[1]) # We get the new choice by sampling from a binomial distribution where the probability of getting one corresponds to the probability of picking the right hand
   outcome <- c(newChoice,values)
   
   return(outcome)
@@ -79,29 +82,32 @@ RLAgent <- function(alpha, # Learning rate - how much weight does the agent put 
 Our agent of interest (RL) is the matcher
 ```{r}
 # Globals
-trials <- 30
+trials <- 250
 
 # RL Agent
 alpha <- 0.6
 tau <- 0.8
+bias <- 0.1 # for the iniitial choice, so its your bias for choosing left/rigth 
 
 rate <- 0.7
 
 # Create tibble to store results
-results <- tibble('Agent1_choice' = rep(NA,trials), 
+results <- tibble('trial' = rep(NA, trials),
+                  'Agent1_choice' = rep(NA,trials), 
                   'Agent2_choice' = rep(NA,trials),
                   'left_v1' = rep(NA,trials),
                   'right_v2' = rep(NA,trials),
                   'feedback' = rep(NA,trials))
 
-# Get a random choice on the first trial
-results$Agent1_choice[1] <- rbinom(1,1,0.5)
+# Get a random choice on the first trial (addding bias)
+results$Agent1_choice[1] <- rbinom(1,1,0.5+bias)
 results$Agent2_choice[1] <- randomAgent(rate)
 
 # Initiate values for RL agent - for simplicity, we set it to .5 which means that the agent is unbiased
 results$left_v1[1] <- .5
 results$right_v2[1] <- .5
 
+results$trial[1] <- 1
 
 for (trial in 2:trials){
   
@@ -129,9 +135,22 @@ for (trial in 2:trials){
   results$left_v1[trial] <- Agent1[2]
   results$right_v2[trial] <- Agent1[3]
   
+  results$trial[trial] <- trial
+  
 }
+```
 
 
+```{r}
+results <- results %>% 
+  rename(choiceREL=Agent1_choice)
+```
+
+
+
+#### saving the data: 
+```{r}
+write_csv(results, "/Users/laura/Desktop/advanced_cognitive_modeling_portfolio1/Asignment/portfolio2/simulated_data.csv")
 ```
 
 
