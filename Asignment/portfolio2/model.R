@@ -16,8 +16,9 @@ pacman::p_load(tidyverse,
                brms, tidybayes)
 
 file <- file.path("~/Code/advanced_cognitive_modeling/portfolio2/stan_RL.stan")
-mod <- cmdstan_model(file, cpp_options = list(stan_threads = TRUE))
-data <- read_csv("Code/advanced_cognitive_modeling/simdata/rl_sim.csv")
+mod <- cmdstan_model(file, cpp_options = list(stan_threads = TRUE),
+                     stanc_options = list("O1"), pedantic = TRUE)
+data <- read_csv("~/Code/advanced_cognitive_modeling/simdata/rl_sim.csv")
 data$feedback
 trials = 30
 
@@ -34,9 +35,9 @@ samples <- mod$sample(
   chains = 2,
   parallel_chains = 2,
   threads_per_chain = 2,
-  iter_warmup = 1000,
+  iter_warmup = 2000,
   iter_sampling = 2000,
-  refresh = 500,
+  refresh = 1000,
   max_treedepth = 20,
   adapt_delta = 0.99,
 )
