@@ -24,22 +24,48 @@ trials = 30
 
 data <- list(
   trials = trials,
-  choice_RL = data$Agent1_choice,
-  choice_Random = data$Agent2_choice,
-  feedback = data$feedback
+  choice_RL = data$Agent1_choice+1,
+  feedback = data$feedback,
+  initValue = c(0, 2)
 )
-
 samples <- mod$sample(
   data = data,
   seed = 123,
   chains = 2,
   parallel_chains = 2,
   threads_per_chain = 2,
-  iter_warmup = 2000,
+  iter_warmup = 1000,
   iter_sampling = 2000,
-  refresh = 1000,
+  refresh = 500,
   max_treedepth = 20,
   adapt_delta = 0.99,
 )
 
+samples$save_object("~/Code/advanced_cognitive_modeling/portfolio2/rl.rds")
+samples$cmdstan_diagnose()
 samples$summary()
+
+draws_df <- as_draws_df(samples$draws()) 
+ggplot(draws_df, aes(.iteration, alpha, group = .chain, color = .chain)) +
+  geom_line() +
+  theme_classic()
+
+ggplot(draws_df, aes(.iteration, logInvTemperature, group = .chain, color = .chain)) +
+  geom_line() +
+  theme_classic()
+
+
+ggplot(draws_df) +
+  geom_density(aes(alpha), fill = "blue", alpha = 0.3) +
+  geom_density(aes(alpha_prior), fill = "red", alpha = 0.3) +
+  xlab("Learning Rate") +
+  ylab("Posterior Density") +
+  theme_classic()
+
+ggplot(draws_df) +
+  geom_density(aes(logInvTemperature), fill = "blue", alpha = 0.3) +
+  geom_density(aes(temperature_prior), fill = "red", alpha = 0.3) +
+  xlab("(inverse) temperature") +
+  ylab("Posterior Density") +
+  theme_classic()
+    

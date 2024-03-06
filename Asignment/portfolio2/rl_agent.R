@@ -1,7 +1,6 @@
 pacman::p_load(tidyverse)
 
 # Creation of agents
-
 # Random bias agent
 randomAgent <- function(bias){
   choice <- rbinom(1,1,bias)
@@ -9,7 +8,6 @@ randomAgent <- function(bias){
 }
 
 # Reinforcement Learning agent
-
 RLAgent <- function(alpha, # Learning rate - how much weight does the agent put on new experience
                     tau,
                     value,
@@ -41,7 +39,6 @@ updateValue <- function(value, # A vector of values for either hand
   right_v2 <- value[2] + alpha * (choice) * (feedback - value[2])
   
   updated_values <- c(left_v1,right_v2)
-  
   
   return(updated_values)
 }
@@ -122,3 +119,4 @@ p1 <- ggplot(results) +
   geom_line(aes(trial, right_v2), color = "blue") +
   theme_bw()
 p1
+
