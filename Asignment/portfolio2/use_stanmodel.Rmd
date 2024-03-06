@@ -17,7 +17,7 @@ pacman::p_load(tidyverse,
 
 ### loading the model:
 ```{r}
-file <- file.path("/Users/laura/Desktop/AdvCogModeling1/Stan_Models/NY_REL_no_transform.stan")
+file <- file.path("/Users/laura/Desktop/advanced_cognitive_modeling_portfolio1/Asignment/portfolio2/stanmodels/NY_REL_runs.stan")
 mod <- cmdstan_model(file, 
                      cpp_options = list(stan_threads = TRUE),
                      stanc_options = list("O1"))
@@ -62,26 +62,41 @@ samples <- mod$sample(
 samples$save_object("/Users/laura/Desktop/advanced_cognitive_modeling_portfolio1/Asignment/portfolio2/simmodels/REL_second_try_no_transform.rds")
 samples$summary() # summarize the model
 ```
+```{r}
+samples$cmdstan_diagnose()
+```
 
-## Visualising: 
 ```{r}
 # Extract posterior samples and include sampling of the prior:
 draws_df <- as_draws_df(samples$draws())
 ```
 
 ```{r}
+ggplot(draws_df, aes(.iteration, alpha, group = .chain, color = .chain)) +
+  geom_line() +
+  theme_classic()
+
+ggplot(draws_df, aes(.iteration, invTau, group = .chain, color = .chain)) +
+  geom_line() +
+  theme_classic()
+```
+
+## Visualising: 
+
+
+```{r}
 # Now let's plot the density for theta (prior and posterior)
 ggplot(draws_df) +
   geom_density(aes(invTau), fill = "blue", alpha = 0.3) +
   geom_density(aes(tau_prior), fill = "red", alpha = 0.3) +
-  geom_vline(xintercept = 0.8, linetype = "dashed", color = "black", size = 1.5) +
+  geom_vline(xintercept = 0.8, linetype = "dashed", color = "black", linewidth = 1.5) +
   ylab("Posterior Density") +
   theme_classic()
 
 ggplot(draws_df) +
   geom_density(aes(alpha), fill = "blue", alpha = 0.3) +
   geom_density(aes(alpha_prior), fill = "red", alpha = 0.3) +
-  geom_vline(xintercept = 0.8, linetype = "dashed", color = "black", size = 1.5) +
+  geom_vline(xintercept = 0.8, linetype = "dashed", color = "black", linewidth = 1.5) +
   ylab("Posterior Density") +
   theme_classic()
 ```
@@ -89,9 +104,13 @@ ggplot(draws_df) +
 
 
 
-
-
-
+```{r}
+ggplot(draws_df) +
+  geom_histogram(aes(prior_preds), color = "darkblue", fill = "blue", alpha = 0.3) +
+  xlab("Predicted heads out of 120 trials") +
+  ylab("Posterior Density") +
+  theme_classic()
+```
 
 
 

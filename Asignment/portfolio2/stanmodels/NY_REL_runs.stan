@@ -10,7 +10,7 @@ data {
 // the parameters are what the model should accept, here we use "alpha" = learning rate and "tau" = inverse temperature for softmax
 parameters {
     real<lower=0, upper=1> alpha; 
-    real<lower=0, upper=15> log_inv_tau; 
+    real<lower=0, upper=20> log_inv_tau; 
 }
 
 transformed parameters{
@@ -27,7 +27,7 @@ model {
     
     // priors for alpha and tau 
     target += uniform_lpdf(alpha | 0, 1); // beta distribution cause...  
-    target += uniform_lpdf(log_inv_tau | 0, 15); //uniform distribution
+    target += uniform_lpdf(log_inv_tau | 0, 20); //uniform distribution
     
     // Initializinng the values vector with the initial values provided outside
     Values = initialValue;
@@ -49,29 +49,37 @@ model {
 generated quantities{
   // --------PRIORS---------
   real<lower=0, upper=1> alpha_prior;
-  real<lower=0, upper=15> tau_prior;
+  real<lower=0, upper=20> tau_prior;
   
   // generating our priors: 
-  alpha_prior = uniform_rng(0,1);
-  tau_prior = uniform_rng(0,15);
-  
+  alpha_prior = inv_logit(uniform_rng(0,1)); // MAYBE SOME INV_LOGIT SHOULD BE DONE HERE ??? I AM NOT SURE ABOUT WHAT SPACE WE ARE CURRENTLY IN????
+  tau_prior = inv_logit(uniform_rng(0,20));
   
   // --------PRIOR PREDICTIONS--------
-  real<lower=0, upper=1> alpha_prior_preds;
-  real<lower=0, upper=1> tau_prior_preds;
+  real<lower=0, upper=trials> alpha_prior_preds;
+  real<lower=0, upper=trials> tau_prior_preds;
   
   // generating our prior predictioinss: 
-  alpha_prior_preds = binomial_rng(1, inv_logit(alpha_prior));
-  tau_prior_preds = binomial_rng(1, inv_logit(tau_prior));
+  alpha_prior_preds = binomial_rng(trials, alpha_prior); // THIS COULD BE DONE UP IN ALL THE CAPS - BUT NOW WE DO IT HERE ?? :DD
+  tau_prior_preds = binomial_rng(trials, tau_prior); // remember that inv_logit(alpha_prior) = the prior 
   
+  
+  // ------- POSTERIOS ------------
+  real<lower=0, upper=1> alpha_post;
+  real<lower=0, upper=20> tau_post;  
+  
+  // generating our prior predictioinss: 
+  alpha_post = inv_logit(alpha);
+  tau_post = inv_logit(invTau);
+
   
   // --------POSTERIOIR PREDICTIONS---------
-    real<lower=0, upper=1> alpha_post_preds;
-  real<lower=0, upper=1> tau_post_preds;
+  real<lower=0, upper=trials> alpha_post_preds;
+  real<lower=0, upper=trials> tau_post_preds;
   
   // generating our prior predictioinss: 
-  alpha_post_preds = binomial_rng(1,inv_logit(alpha));
-  tau_post_preds = binomial_rng(1,inv_logit(invTau));
+  alpha_post_preds = binomial_rng(trials, alpha_post); // remember that inv_logit(alpha) = the posterior 
+  tau_post_preds = binomial_rng(trials, tau_post);
   
   
  
@@ -89,7 +97,7 @@ generated quantities{
   
   //--------- RUNNING ---------
   for (t in 1:trials) {
-        prob = softmax(invTau * Values); // action prob. computed via softmax
+        prob = softmax(log_inv_tau * Values); // action prob. computed via softmax
         log_lik = log_lik + categorical_lpmf(choiceREL[t] | prob);
         
         pred_error = feedback[t] - Values[choiceREL[t]]; // compute pred_error for chosen value only
