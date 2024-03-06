@@ -1,111 +1,141 @@
 data {
-    int<lower=1> trials;
-  //vector[trials] choiceREL; 
-  array[trials] int<lower=1,upper=2> choiceREL;
-  //vector[trials] feedback; 
-  array[trials] int<lower=0,upper=1> feedback;
-  vector[2] initialValue; //the initial values for choosing left and rigth specified in model fitting 
+    int<lower=1> trials; // Number of trials in the experiment or dataset.
+    array[trials] int<lower=1,upper=2> choiceREL; // Observed choices made by the agent. Each choice is either 1 (e.g., left) or 2 (e.g., right).
+    array[trials] int<lower=0,upper=1> feedback; // Feedback received after each choice. Encoded as 0 or 1, representing negative or positive feedback, respectively.
+    vector[2] initialValue; // Initial values for making left and right choices. 
 } 
 
-// the parameters are what the model should accept, here we use "alpha" = learning rate and "tau" = inverse temperature for softmax
+
 parameters {
-    real<lower=0, upper=1> alpha; 
-    real<lower=0, upper=20> log_inv_tau; 
+    real<lower=0, upper=1> alpha; // Learning rate parameter, confined between 0 and 1. Determines how quickly the agent updates its value estimates based on received feedback.
+    real<lower=0, upper=20> log_inv_tau; // Logarithm of the inverse temperature parameter. This parameter controls the randomness of the choice: higher values make choices more deterministic.
 }
 
+
+
 transformed parameters{
-  real invTau; // Inverse temperature, for the boundaries 
-  invTau = exp(log_inv_tau);
+    real invTau; // Inverse temperature, transformed from its logarithmic scale to its natural scale for usage in the softmax function.
+    invTau = exp(log_inv_tau);
 }
+
 
 
 
 model {
-    real pred_error; // predicted error
-    vector[2] Values;
-    vector[2] prob; 
+    real pred_error; // Placeholder for the prediction error computed in the loop.
+    vector[2] Values; // Vector to hold the current estimates of the values for left and right choices.
+    vector[2] prob; // Vector to hold the probabilities of choosing left or right, computed using the softmax function.
+
     
-    // priors for alpha and tau 
-    target += uniform_lpdf(alpha | 0, 1); // beta distribution cause...  
-    target += uniform_lpdf(log_inv_tau | 0, 20); //uniform distribution
+    // Specify uniform priors for alpha and tau directly on the log scale. 
+    // using uniform priors suggest a lack of strong prior beliefs .... 
+    target += beta_lpdf(alpha | 2, 5); 
+    target += normal_lpdf(log_inv_tau | 0, 1);
     
-    // Initializinng the values vector with the initial values provided outside
+
+    // Initialize the Values vector with the provided initial values.
     Values = initialValue;
     
-    // looping over estimating for all trials: 
+    // Loop through each trial to estimate the model parameters based on observed data.
     for (t in 1:trials) {
-      
-       // Compute probabilities for the next choice by the softmax given inverse temperature and previous values for left rigth 
-        prob = softmax(invTau * Values); 
-        // Update choice given the probabilities calculated above
-        target += categorical_lpmf(choiceREL[t] | prob);
+  
+          prob = softmax(invTau * Values); // Compute choice probabilities using the softmax function, scaled by the inverse temperature to account for decision stochasticity.
+          target += categorical_lpmf(choiceREL[t] | prob); // Update the model's target log probability based on the likelihood of observed choices, given the computed probabilities.
         
-        pred_error = feedback[t] - Values[choiceREL[t]]; // compute prediction error based on the choice and the corresponding feedback
-        Values[choiceREL[t]] = Values[choiceREL[t]] + alpha * pred_error; // update the value of the choice just made 
+          pred_error = feedback[t] - Values[choiceREL[t]]; // Compute the prediction error as the difference between received feedback and the current value estimate for the chosen option.
+          Values[choiceREL[t]] = Values[choiceREL[t]] + alpha * pred_error; // Update the value estimate for the chosen option using the prediction error scaled by the learning rate.
+        
     }
     
 }
 
 generated quantities{
   // --------PRIORS---------
-  real<lower=0, upper=1> alpha_prior;
-  real<lower=0, upper=20> tau_prior;
+  real alpha_prior = beta_rng(2, 5); // Simulate a prior sample for alpha from a Beta distribution.
+  real log_inv_tau_prior = normal_rng(0, 1); // Simulate a prior sample for log_inv_tau from a Normal distribution. 
   
-  // generating our priors: 
-  alpha_prior = inv_logit(uniform_rng(0,1)); // MAYBE SOME INV_LOGIT SHOULD BE DONE HERE ??? I AM NOT SURE ABOUT WHAT SPACE WE ARE CURRENTLY IN????
-  tau_prior = inv_logit(uniform_rng(0,20));
+  // Convert simulated log_inv_tau_prior to inv_tau_prior for interpretability 
+  real inv_tau_prior = exp(log_inv_tau_prior);
+  
   
   // --------PRIOR PREDICTIONS--------
-  real<lower=0, upper=trials> alpha_prior_preds;
-  real<lower=0, upper=trials> tau_prior_preds;
+  int alpha_prior_preds = binomial_rng(trials, alpha_prior);
+  //int tau_prior_preds = binomial_rng(trials, inv_tau_prior); COMMENTED OUT CAUSE TAU ISNT BETWEEN 0 AND 1 SO NOT SURE HOW TO TREAT IT 
   
-  // generating our prior predictioinss: 
-  alpha_prior_preds = binomial_rng(trials, alpha_prior); // THIS COULD BE DONE UP IN ALL THE CAPS - BUT NOW WE DO IT HERE ?? :DD
-  tau_prior_preds = binomial_rng(trials, tau_prior); // remember that inv_logit(alpha_prior) = the prior 
-  
-  
-  // ------- POSTERIOS ------------
-  real<lower=0, upper=1> alpha_post;
-  real<lower=0, upper=20> tau_post;  
-  
-  // generating our prior predictioinss: 
-  alpha_post = inv_logit(alpha);
-  tau_post = inv_logit(invTau);
-
-  
-  // --------POSTERIOIR PREDICTIONS---------
-  real<lower=0, upper=trials> alpha_post_preds;
-  real<lower=0, upper=trials> tau_post_preds;
-  
-  // generating our prior predictioinss: 
-  alpha_post_preds = binomial_rng(trials, alpha_post); // remember that inv_logit(alpha) = the posterior 
-  tau_post_preds = binomial_rng(trials, tau_post);
+  // ------- POSTERIOR PREDICTIONS------------
+  int alpha_post_preds = binomial_rng(trials, alpha);
+  //int tau_post_preds = binomial_rng(trials, inv_tau_prior); COMMENTED OUT CAUSE TAU ISNT BETWEEN 0 AND 1 SO NOT SURE HOW TO TREAT IT 
   
   
- 
+  // ------- COMPUTING PREDICTITIONS TO POSTERIOR PREDICTIVE CHECKS ------------
+  // An array to store choices based on posterior probabilities 
+  array[trials] int<lower=1,upper=2> simulated_choices;
   
-  //--------- GENERATING THE CHOICES GIVEN THE MODEL---------
-   // initializing model values to get them our 
-  real pred_error;
-  vector[2] Values;
-  vector[2] prob;
   
-  real log_lik;
+  // Temporary variables for prediction error and probabilities calculation within the loop.
+  real temp_pred_error;
+  vector[2] temp_Values;
+  vector[2] temp_prob;
   
-  Values = initialValue;
-  log_lik = 0;
+  // Initialize temp_Values with the initial values provided to the model.
+  temp_Values = initialValue;
   
-  //--------- RUNNING ---------
   for (t in 1:trials) {
-        prob = softmax(log_inv_tau * Values); // action prob. computed via softmax
-        log_lik = log_lik + categorical_lpmf(choiceREL[t] | prob);
-        
-        pred_error = feedback[t] - Values[choiceREL[t]]; // compute pred_error for chosen value only
-        Values[choiceREL[t]] = Values[choiceREL[t]] + alpha * pred_error; // update chosen V
+    // Compute choice probabilities using softmax function, based on current value estimates and inv_tau.
+    temp_prob = softmax(invTau * temp_Values);
+    
+    // Simulate choices based on computed probabilities.
+    simulated_choices[t] = categorical_rng(temp_prob);
+    
+    //  calculate prediction error for the simulated choice.
+    if (t < trials) { // Skip the last trial cause no feedback is available.
+      temp_pred_error = feedback[t] - temp_Values[simulated_choices[t]];
+      temp_Values[simulated_choices[t]] = temp_Values[simulated_choices[t]] + alpha * temp_pred_error;
     }
+    
+    //okay im kinda torned, cause below i guess the actual post pred check is - no data and new
+    // probabilities for choices given the prior and post tau 
+    // however, should the same be done for alpha, we need feedback (data), so we 
+    // are no longer in completely simulation-no-data land, which i think we are supposed to be???
+    
+    // my intuitioin: 
+    // The aim is to assess the predictive performance of the model as it was fitted
+    // to the observed data. This means looking at how well the model, using the parameters 
+    // it learned (invTau), can predict the choices (choiceREL) we observed, without 
+    // further modifying its understanding or "learning" from those observations during the simulation.
+    //If we update the value estimates based on feedback during the simulation,
+    // we're effectively allowing the model to "learn" from the observed data again.
+    // This conflates prediction (estimating what will happen based on what the model has learned) 
+    // with a form of continued learning (updating the model's estimates based on new data),
+    // which isn't the goal during predictive performance assessment. ????? I THINK ???!?!??!?!
+    
+  // ------------- ASSESSING HOW POST AND PRIOR PARAMETERS AFFECT PROBABILITES ------------- 
+  // Because tau influences choice via softmax probabilities, 
+  // we simulate how choice probabilities might vary across trials for **prior** and **posterior** tau values.
   
-}
+  ///// THIS DOESNT WORK AND I CAN'T FIGURE OUT HOW ON EARTH I AM TO STORE THE VARIABLES
+    // vector[2] choice_prob_prior_tau[trials]; 
+    // vector[2] choice_prob_post_tau[trials];
 
 
-
-
+  
+    // for (i in 1:trials) {
+    // Simulating choice probabilities under prior tau:
+      // vector[2] prob_prior_tau = softmax(inv_tau_prior * temp_Values); // Assuming temp_Values reflects some baseline value estimates.
+      // choice_prob_prior_tau[1][i] = prob_prior_tau[1];
+      // choice_prob_prior_tau[2][i] = prob_prior_tau[2];
+    
+    // Simulating choice probabilities under estimated tau:
+      // vector[2] prob_post_tau = softmax(invTau * temp_Values); // Use model-estimated invTau.
+      // choice_prob_post_tau[1][i] = prob_post_tau[1];
+      // choice_prob_post_tau[2][i] = prob_post_tau[2];
+    // }
+  
+  }
+}  
+  
+  
+  
+//I think ???, the key to Bayesian modeling in Stan is distinguishing between fitting the model 
+//to observed data (in the model block) and using the fitted model to make predictions or 
+//conduct simulations (in the generated quantities block).

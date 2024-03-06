@@ -21,7 +21,7 @@ file <- file.path("/Users/laura/Desktop/advanced_cognitive_modeling_portfolio1/A
 mod <- cmdstan_model(file, 
                      cpp_options = list(stan_threads = TRUE),
                      stanc_options = list("O1"))
-
+ 
 
 
 ```
@@ -59,7 +59,7 @@ samples <- mod$sample(
 ```
 
 ```{r}
-samples$save_object("/Users/laura/Desktop/advanced_cognitive_modeling_portfolio1/Asignment/portfolio2/simmodels/REL_second_try_no_transform.rds")
+#samples$save_object("/Users/laura/Desktop/advanced_cognitive_modeling_portfolio1/Asignment/portfolio2/simmodels/REL_second_try_no_transform.rds")
 samples$summary() # summarize the model
 ```
 ```{r}
@@ -69,7 +69,14 @@ samples$cmdstan_diagnose()
 ```{r}
 # Extract posterior samples and include sampling of the prior:
 draws_df <- as_draws_df(samples$draws())
+draws_df
+
 ```
+
+#### displaying chains: 
+These plots show how the sampled values of alpha and invTau change over iterations during the Markov Chain Monte Carlo (MCMC) simulation. Each line represents a chain, allowing you to see the variation and convergence of sampled values over iterations for each chain.
+
+**Purpose**: Trace plots are used to assess the convergence of the chains. Ideally, you want to see the chains mixing well, indicating that they are exploring the parameter space effectively and converging to the same distribution. If the chains show divergent behaviors or fail to settle, it suggests issues with convergence, potentially requiring model re-evaluation or adjustments in sampling settings.
 
 ```{r}
 ggplot(draws_df, aes(.iteration, alpha, group = .chain, color = .chain)) +
@@ -84,55 +91,104 @@ ggplot(draws_df, aes(.iteration, invTau, group = .chain, color = .chain)) +
 ## Visualising: 
 
 
+##### comparing prior distribution with real distributions (posterior density)
+the prior distribution represents our beliefs or knowledge about the parameter values before observing the data. The posterior distribution reflects the updated beliefs after considering the observed data, computed via Bayes' theorem. 
+
+The process of updating from prior to posterior incorporates the likelihood of observing the data given the parameter values, essentially re-weighting our beliefs in light of new evidence
+
+
 ```{r}
 # Now let's plot the density for theta (prior and posterior)
 ggplot(draws_df) +
-  geom_density(aes(invTau), fill = "blue", alpha = 0.3) +
-  geom_density(aes(tau_prior), fill = "red", alpha = 0.3) +
-  geom_vline(xintercept = 0.8, linetype = "dashed", color = "black", linewidth = 1.5) +
-  ylab("Posterior Density") +
-  theme_classic()
-
-ggplot(draws_df) +
-  geom_density(aes(alpha), fill = "blue", alpha = 0.3) +
-  geom_density(aes(alpha_prior), fill = "red", alpha = 0.3) +
-  geom_vline(xintercept = 0.8, linetype = "dashed", color = "black", linewidth = 1.5) +
+  geom_density(aes(invTau), fill = "darkgreen", alpha = 0.3) +
+  geom_density(aes(inv_tau_prior), fill = "blue", alpha = 0.3) +
+  #geom_vline(xintercept = 0.8, linetype = "dashed", color = "black", linewidth = 1.5) +
   ylab("Posterior Density") +
   theme_classic()
 ```
+$inv \ \tau$ represents the inverse temperature parameter in our model, representing the degree of randomness or determinism in decision-making processes, so in this case the choice of choosing right or left hand. A lower value suggests more random choices (higher entropy), whereas a higher value indicates more deterministic choices based on the model's utilities.
 
+**Prior Visualization**: The blue density curve for inv_tau_prior displays the distribution of beliefs about invTau *before observing the data*. This distribution is shaped by the choice of prior distribution and its parameters, reflecting theoretical or empirical knowledge prior to the experiment. A somewhat wide prior is expected, but what we got going on is insane .... 
 
+**Posterior Visualization**: The green density curve for invTau shows the updated distribution *after data incorporation*. This curve typically narrows, centering around values that make the observed data more probable, indicating increased certainty about invTau's value based on the data. In this case the distribution is ridicously narrow ........ ?!?!?!
 
+The comparison between the prior and posterior distributions for invTau visually demonstrates the data's impact on our parameter uncertainty. Shifts in the location of the distribution highlight learning from the data, while changes in spread reflect adjustments in certainty. While certainty is good, I think the model is a bit too certain here ... 
 
 ```{r}
 ggplot(draws_df) +
-  geom_histogram(aes(prior_preds), color = "darkblue", fill = "blue", alpha = 0.3) +
-  xlab("Predicted heads out of 120 trials") +
+  geom_density(aes(alpha), fill = "darkgreen", alpha = 0.3) +
+  geom_density(aes(alpha_prior), fill = "blue", alpha = 0.3) +
+  #geom_vline(xintercept = 0.8, linetype = "dashed", color = "black", linewidth = 1.5) +
   ylab("Posterior Density") +
   theme_classic()
+
+
 ```
+$\alpha$ represents the learning rate, that quantifies the rate of update or influence of new information on beliefs or decision processes within a model. It's crucial in models of learning or adaptation, indicating how quickly a model (and in our case a player) adjusts based on new feedback.
+Remember $\alpha$ is *restrained to be between 0 and 1.*
+
+**Prior Visualization**: The density plot for alpha_prior in blue visualizes the initial distribution of alpha based on prior assumptions before being fitted to data. 
+
+**Posterior Visualization**: The posterior density (???? is this correct, when its just aloha, green) for alpha showcases how the parameter estimates evolve *after considering the empirical data*. A well-informed posterior will often peak more sharply than the prior, indicating more precise estimates of alpha. This is not exactly the case here, but I guess there is some improvement. 
+
+This visualization *should ideally* show prior beliefs are refined into posterior knowledge. It's a graphical representation of learning from data, where the extent and direction of the shift from prior to posterior densities encapsulate the data's informativeness and its alignment with or deviation from initial expectations. BUT THIS IS CURRENTLY NOT THE CASE ....
 
 
+### Predictive Checks
+be sure what the x-axis is ???? is it successes:::: maybe this is the case:::: The binomial_rng function generates random draws from a binomial distribution, which represents the number of successes in a fixed number of trials (trials), with success on each trial having a probability (alpha_prior or alpha). Therefore, the x-axis in both histograms represents the number of "successful" predictions or choices out of trials based on the learning rate. Success == feedback=1. 
 
+##### PRIOR Predictions Histogram
+The histogram for alpha_prior_preds represents the outcomes or predictions we would expect based on our prior beliefs about alpha *before observing any data*. In the context of our model, *this means represent a range of possible choices OR successes NOT SURE ????*? across simulations, assuming the model is driven solely by the prior beliefs about the learning rate or similar parameter.
 
-
-
-
-
-
-
-
-
-
-
+The spread and shape of this histogram reflect the variability and central tendencies expected from the prior. A wide spread indicates high uncertainty or variability in outcomes expected from the prior beliefs, while a narrower histogram suggests more precise expectations. This visualization helps in assessing whether the prior assumptions lead to reasonable or expected behavior within the model's context without the influence of observed data.*HMMMM BUT IS THIS THE CASE I AM NOT SURE ANYMORE !??!?!?!?!?N*
 
 ```{r}
 ggplot(draws_df) +
-  geom_histogram(aes(tau_prior_preds03), color = "yellow", fill = "lightyellow", alpha = 0.2) +
-  geom_histogram(aes(tau_prior_preds07), color = "green", fill = "lightgreen", alpha = 0.2) +
-  geom_histogram(aes(tau_prior_preds09), color = "blue", fill = "lightblue", alpha = 0.2) +
-  xlab("Predicted rigth (????) out of 250 trials") +
-  ylab("Posterior Density") +
+  geom_histogram(aes(alpha_prior_preds), color = "darkblue", fill = "blue", alpha = 0.3) +
+  xlab("Predicted SOMETHING ER IKKE SIKKERR??? maybe correct choices??? out of 2500 trials") +
+  ylab("Posterior Density (ALPHA)") +
+  labs(title = "Prior Predictions") +
   theme_classic()
 ```
 
+
+##### POSTERIOR Predictions Histogram
+The alpha_post_preds histogram reflects the range of outcomes expected now that *the model has been informed by data.* The posterior predictions incorporate both the initial beliefs (the prior) and the information gained from the observed data, leading to potentially different expectations about outcomes.
+
+This plot helps understanding how data alters our expectations. A shift from the prior predictions histogram indicates the data's influence, while changes in spread (variability) highlight adjustments in certainty about outcomes. Ideally, this histogram should represent more accurate predictions about future observations, assuming the model correctly captures the data-generating process.... I think ... but does it do so???? 
+```{r}
+ggplot(draws_df) +
+  geom_histogram(aes(alpha_post_preds), color = "pink", fill = "pink", alpha = 0.3) + 
+  xlab("Predicted SOMETHING ER IKKE SIKKERR??? maybe correct choices??? out of 2500 trials") +
+  ylab("Posterior Density (ALPHA)") +
+  labs(title = "Posterior Predictions") +
+  theme_classic()
+```
+
+
+```{r}
+### NOW COMBINED: 
+ggplot(draws_df) +
+  geom_histogram(aes(alpha_prior_preds), color = "darkblue", fill = "darkblue", alpha = 0.3, bins = 90) +
+  geom_histogram(aes(alpha_post_preds), color = "pink", fill = "pink", alpha = 0.3, bins = 90) +
+  geom_vline(xintercept = sum(stan_data$feedback), color = "red") + # TRUE VALUES: feedback if we have success on the x-axis???
+ xlab("Predicted SOMETHING ER IKKE SIKKERR??? maybe correct choices??? out of 2500 trials") +
+  ylab("Posterior Density") +
+  labs(title = "Prior and Posterior Predictions")+
+  theme_classic()
+```
+
+**INTERPRET THIS SOMEHOW**
+!!!!!!!!!!!!!!!!!!!!!
+
+#### Compare data choices with model simulated choices: 
+```{r}
+### all the simulated choices are stored as a column for each trial ??? maybe make it long format instead of wide and compare them to the true choices
+##### but there is something weird in how they are stored not gonna lie 
+```
+
+
+### PRIOR SENSITIVITY ANALYSIS MAY BE DONE???
+https://fusaroli.github.io/AdvancedCognitiveModeling2023/practical-exercise-4---model-quality-checks.html#prior-sensitivity-analysis
+
+ 
