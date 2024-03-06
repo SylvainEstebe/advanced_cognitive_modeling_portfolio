@@ -17,10 +17,11 @@ pacman::p_load(tidyverse,
 
 ### loading the model:
 ```{r}
-file <- file.path("/Users/laura/Desktop/AdvCogModeling1/Stan_Models/REL2_model.stan")
+file <- file.path("/Users/laura/Desktop/AdvCogModeling1/Stan_Models/NY_REL_no_transform.stan")
 mod <- cmdstan_model(file, 
                      cpp_options = list(stan_threads = TRUE),
                      stanc_options = list("O1"))
+
 
 
 ```
@@ -30,12 +31,12 @@ mod <- cmdstan_model(file,
 dat <- read_csv("/Users/laura/Desktop/advanced_cognitive_modeling_portfolio1/Asignment/portfolio2/simulated_data.csv")
 n = length(dat$trial)-1
 
-#### getting it on a list format that stan actually likes :) 
+#### getting it on a list format that stan actually likes 
 stan_data <- list(
   trials = n,
-  choiceREL = dat$Agent1_choice[1:n], ### rigth now just taking the same length as feedback, to see if it will even work
+  choiceREL = dat$Agent1_choice[1:n]+1, ### rigth now just taking the same length as feedback, to see if it will even work
   feedback = dat$feedback[1:n], # trying to get around the last NA by removing it 
-  initialValue = c(dat$left_v1[1], dat$right_v2[1])
+  initialValue = c(.5,.5) #c(dat$left_v1[1], dat$right_v2[1])
 )
 ```
 
@@ -58,7 +59,7 @@ samples <- mod$sample(
 ```
 
 ```{r}
-samples$save_object("/Users/laura/Desktop/advanced_cognitive_modeling_portfolio1/Asignment/portfolio2/simmodels/REL_first_try.rds")
+samples$save_object("/Users/laura/Desktop/advanced_cognitive_modeling_portfolio1/Asignment/portfolio2/simmodels/REL_second_try_no_transform.rds")
 samples$summary() # summarize the model
 ```
 
@@ -69,19 +70,42 @@ draws_df <- as_draws_df(samples$draws())
 ```
 
 ```{r}
-# add a prior for theta (ugly, but we'll do better soon)
-draws_df <- draws_df %>% mutate(
-  theta_prior = rbeta(nrow(draws_df), 1, 1)
-)
-
 # Now let's plot the density for theta (prior and posterior)
 ggplot(draws_df) +
-  geom_density(aes(tau), fill = "blue", alpha = 0.3) +
+  geom_density(aes(invTau), fill = "blue", alpha = 0.3) +
   geom_density(aes(tau_prior), fill = "red", alpha = 0.3) +
   geom_vline(xintercept = 0.8, linetype = "dashed", color = "black", size = 1.5) +
   ylab("Posterior Density") +
   theme_classic()
+
+ggplot(draws_df) +
+  geom_density(aes(alpha), fill = "blue", alpha = 0.3) +
+  geom_density(aes(alpha_prior), fill = "red", alpha = 0.3) +
+  geom_vline(xintercept = 0.8, linetype = "dashed", color = "black", size = 1.5) +
+  ylab("Posterior Density") +
+  theme_classic()
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ```{r}
 ggplot(draws_df) +

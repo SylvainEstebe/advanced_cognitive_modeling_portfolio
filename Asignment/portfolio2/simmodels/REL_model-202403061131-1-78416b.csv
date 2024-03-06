@@ -1,0 +1,47 @@
+# stan_version_major = 2
+# stan_version_minor = 34
+# stan_version_patch = 1
+# model = REL_model_model
+# start_datetime = 2024-03-06 10:31:01 UTC
+# method = sample (Default)
+#   sample
+#     num_samples = 2000
+#     num_warmup = 1000 (Default)
+#     save_warmup = 0 (Default)
+#     thin = 1 (Default)
+#     adapt
+#       engaged = 1 (Default)
+#       gamma = 0.05 (Default)
+#       delta = 0.99
+#       kappa = 0.75 (Default)
+#       t0 = 10 (Default)
+#       init_buffer = 75 (Default)
+#       term_buffer = 50 (Default)
+#       window = 25 (Default)
+#       save_metric = 0 (Default)
+#     algorithm = hmc (Default)
+#       hmc
+#         engine = nuts (Default)
+#           nuts
+#             max_depth = 20
+#         metric = diag_e (Default)
+#         metric_file =  (Default)
+#         stepsize = 1 (Default)
+#         stepsize_jitter = 0 (Default)
+#     num_chains = 1 (Default)
+# id = 1 (Default)
+# data
+#   file = /var/folders/k4/ms5x119d5cd2s9ldsk71bkf00000gn/T/RtmpXCq6sw/standata-176cf725310f8.json
+# init = 2 (Default)
+# random
+#   seed = 123
+# output
+#   file = /Users/laura/Desktop/advanced_cognitive_modeling_portfolio1/Asignment/portfolio2/simmodels/REL_model-202403061131-1-78416b.csv
+#   diagnostic_file =  (Default)
+#   refresh = 0
+#   sig_figs = -1 (Default)
+#   profile_file = /Users/laura/Desktop/advanced_cognitive_modeling_portfolio1/Asignment/portfolio2/simmodels/REL_model-profile-202403061131-1-2bc843.csv
+#   save_cmdstan_config = 0 (Default)
+# num_threads = 2 (Default)
+# stanc_version = stanc3 v2.34.0
+# stancflags = --O1 --name=REL_model_model
