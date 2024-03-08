@@ -202,6 +202,7 @@ sim_res |>
   mutate(i = 1:n(),
          winrate = cum_winrate(winner)) |>
   ggplot() +
+<<<<<<< HEAD
   geom_hline(yintercept = 0.5, linetype = "dashed") +
   geom_line(aes(i, winrate, color = sigma, group = sigma)) +
   scale_color_viridis() +
@@ -210,6 +211,11 @@ sim_res |>
   facet_grid(theta1~., labeller=label_both) +
   labs(color = "theta2")
 ggsave("winrate_wsls_tom.png")
+=======
+  geom_line(aes(i, winrate, color = factor(sigma), group = sigma)) +
+  facet_grid(theta1~.)
+
+>>>>>>> origin/main
 
 sim_res |>
   unnest(result) |>
