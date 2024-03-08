@@ -8,7 +8,7 @@ data {
 
 parameters {
   real<lower=0, upper=1> alpha; // learning rate
-  real log_tau;                  // inverse temperature, unconstrained
+  real log_tau;                 // inverse temperature, unconstrained
 }
 
 transformed parameters {
@@ -30,7 +30,9 @@ transformed parameters {
 model {
   alpha ~ beta(2, 1);
   log_tau ~ normal(0, 1);
-  
+  target += beta_lpdf(alpha | 2, 1);
+  target += normal_lpdf(log_tau | 0, 1);
+
   // choice ~ bernoulli(theta);
   target += bernoulli_lpmf(choice | theta);
 }
