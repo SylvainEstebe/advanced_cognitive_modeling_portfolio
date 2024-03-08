@@ -133,7 +133,7 @@ step_n_matching_pennies <- function(history, n, agent_matcher, agent_capitalist)
 }
 
 init_random <- function() {
-  tibble(matcher = rbinom(1,1,.5),
+  tibble(matcher    = rbinom(1,1,.5),
          capitalist = rbinom(1,1,.5))
 }
 
@@ -143,16 +143,25 @@ init_random <- function() {
 ##                           make_agent(noisy_wsls, tibble(theta=1), feedback_capitalist))
 
 
+matcher_fun <- function(choice) {
+  return(choice)
+}
 
-tom <- function(model, other_feedback) {
+capitalist_fun <- function(choice) {
+  return(1-choice)
+}
+
+
+tom <- function(model, other_feedback, action_function) {
   function(history, params, feedback) {
     estimate <- model(history, params, other_feedback)
+    mychoice <- action_function(estimate)
 
     noise <- rbinom(1,1, params$sigma)
     if (noise) {
-      return(estimate)
+      return(mychoice)
     } else {
-      return(1-estimate)
+      return(1-mychoice)
     }
   }
 }
@@ -164,7 +173,7 @@ do_sim <- function(theta1, theta2, sigma, n) {
     step_n_matching_pennies(
         n,
         make_agent(noisy_wsls, tibble(theta=theta1), feedback_matcher),
-        make_agent(tom(noisy_wsls, feedback_matcher), tibble(theta=theta2, sigma=sigma), feedback_capitalist)
+        make_agent(tom(noisy_wsls, feedback_matcher, capitalist_fun), tibble(theta=theta2, sigma=sigma), feedback_capitalist)
     ) |>
     mutate(winner = matcher == capitalist)
 }
@@ -172,7 +181,8 @@ do_sim <- function(theta1, theta2, sigma, n) {
 
 sim_res <- expand_grid(
   theta1 = seq(0.5, 1, by = 0.1),
-  theta2 = seq(0.5, 1, by = 0.1),
+  ## theta2 = seq(0.5, 1, by = 0.1),
+  theta2 = 1,
   sigma = seq(0.5, 1, by = 0.1)) |>
   #sample_n(100) |>
   mutate(result = future_pmap(list(theta1, theta2, sigma), do_sim, 200, .options = furrr_options(seed = TRUE)))
@@ -192,9 +202,14 @@ sim_res |>
   mutate(i = 1:n(),
          winrate = cum_winrate(winner)) |>
   ggplot() +
-  geom_line(aes(i, winrate, color = factor(sigma), group = sigma)) +
-  facet_grid(theta1~.)
-
+  geom_hline(yintercept = 0.5, linetype = "dashed") +
+  geom_line(aes(i, winrate, color = sigma, group = sigma)) +
+  scale_color_viridis() +
+  theme_classic() +
+  scale_y_continuous(labels = scales::percent_format()) +
+  facet_grid(theta1~., labeller=label_both) +
+  labs(color = "theta2")
+ggsave("winrate_wsls_tom.png")
 
 sim_res |>
   unnest(result) |>
