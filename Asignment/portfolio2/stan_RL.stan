@@ -1,8 +1,8 @@
 // The input data are 3 vector 'choice_RL', 'choice_Random', 'feedback' and the number of trials "trials"
 data {
   int<lower=1> trials;
-  array[trials] int<lower=0,upper=2>  choice_RL; // outcome - NB make the previous choice from choice
-  array[trials] int<lower=0,upper=1> feedback ; // input
+  array[trials] int<lower=1,upper=2>  choice_RL; // outcome - NB make the previous choice from choice
+  array[trials] int<lower=-1,upper=1> feedback ; // input
 }
 
 // defiing variables that do not need to be changed when running the program.
@@ -14,11 +14,11 @@ transformed data {
 // The parameters that the model needs to estimate (alpha and lovInvTemperature)
 parameters {
   real<lower=0, upper=1> alpha; // the learning rate
-  real<lower=0, upper=20> logInvTemperature; // 
+  real logInvTemperature; //
 }
 
 transformed parameters{
-  real invTemperature; // Inverse temperature, for the boundaries 
+  real<lower=0> invTemperature; // Inverse temperature, for the boundaries
   invTemperature = exp(logInvTemperature);
 }
 
@@ -35,7 +35,7 @@ model {
   //target += beta_lpdf(alpha | 2, 2); //     alpha ~ uni(0,1);
   //target += normal_lpdf(logInvTemperature | 0, 1); //   invTemperature ~ uni(0,20);
   target += uniform_lpdf(alpha | 0, 1); //     alpha ~ uni(0,1);
-  target += uniform_lpdf(logInvTemperature | 0, 20); //   invTemperature ~ uni(0,20);
+  target += normal_lpdf(logInvTemperature | 0, 3); //   invTemperature ~ uni(0,20);
 
   value = initValue;
 
@@ -46,7 +46,7 @@ for (t in 1:trials){
   target += categorical_lpmf(choice_RL[t] | prob);
 
   predError = feedback[t] - value[choice_RL[t]];
-  value[choice_RL[t]] = value[choice_RL[t]] + alpha * predError; // update chosen V
+  value[choice_RL[t]] = value[choice_RL[t]] + alpha * predError; // update chosen V                                 
 
 
 }
@@ -54,27 +54,29 @@ for (t in 1:trials){
 }
 
 generated quantities{
-  real<lower=0, upper=1> alpha_prior;
-  real<lower=0, upper=20> temperature_prior;
-  
+  // real<lower=0, upper=1> alpha_prior;
+  // real<lower=0, upper=20> temperature_prior;
+
   real pe;
-  vector[2] value;
-  vector[2] prob;
+  matrix[2, trials] value;
+  // vector[2] prob;
+
+  // real log_lik;
+
+  // alpha_prior = uniform_rng(0,1);
+  // temperature_prior = uniform_rng(0,20);
+
+  value[,1] = initValue;
+  // log_lik = 0;
   
-  real log_lik;
-  
-  alpha_prior = uniform_rng(0,1);
-  temperature_prior = uniform_rng(0,20);
-  
-  value = initValue;
-  log_lik = 0;
-  
-  for (t in 1:trials) {
-        prob = softmax( logInvTemperature * value); // action prob. computed via softmax
-        log_lik = log_lik + categorical_lpmf(choice_RL[t] | prob);
+  for (t in 2:trials) {
+        // log_lik = log_lik + categorical_lpmf(choice_RL[t] | prob);
         
-        pe = feedback[t] - value[choice_RL[t]]; // compute pe for chosen value only
-        value[choice_RL[t]] = value[choice_RL[t]] + alpha * pe; // update chosen V
+        pe = feedback[t-1] - value[choice_RL[t-1], t-1]; // compute pe for chosen value only
+        value[choice_RL[t],t] = value[choice_RL[t-1],t-1] + alpha * pe; // update chosen V
+        value[3-choice_RL[t],t] = value[3-choice_RL[t],t-1];            // keep the non-chosen V                   
+                                                                //
+        // prob = softmax( logInvTemperature * value[,t]); // action prob. computed via softmax
     }
   
 }
