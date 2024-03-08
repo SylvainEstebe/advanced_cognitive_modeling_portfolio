@@ -14,7 +14,7 @@ transformed data {
 // The parameters that the model needs to estimate (alpha and lovInvTemperature)
 parameters {
   real<lower=0, upper=1> alpha; // the learning rate
-  real<lower=0, upper=20> logInvTemperature; // 
+  real logInvTemperature; //
 }
 
 transformed parameters{
@@ -35,7 +35,7 @@ model {
   //target += beta_lpdf(alpha | 2, 2); //     alpha ~ uni(0,1);
   //target += normal_lpdf(logInvTemperature | 0, 1); //   invTemperature ~ uni(0,20);
   target += uniform_lpdf(alpha | 0, 1); //     alpha ~ uni(0,1);
-  target += uniform_lpdf(logInvTemperature | 0, 20); //   invTemperature ~ uni(0,20);
+  target += normal_lpdf(logInvTemperature | 0, 1); // exp(3) = 20, so 96% of the prior mass is <20
 
   value = initValue;
 
@@ -55,7 +55,7 @@ for (t in 1:trials){
 
 generated quantities{
   real<lower=0, upper=1> alpha_prior;
-  real<lower=0, upper=20> temperature_prior;
+  real logtemperature_prior;
   
   real pe;
   vector[2] value;
@@ -64,7 +64,8 @@ generated quantities{
   real log_lik;
   
   alpha_prior = uniform_rng(0,1);
-  temperature_prior = uniform_rng(0,20);
+  logtemperature_prior = normal_rng(0, 1);
+  temperature_prior = exp(logtemperature_prior);
   
   value = initValue;
   log_lik = 0;
@@ -76,7 +77,6 @@ generated quantities{
         pe = feedback[t] - value[choice_RL[t]]; // compute pe for chosen value only
         value[choice_RL[t]] = value[choice_RL[t]] + alpha * pe; // update chosen V
     }
-  
 }
 
 
