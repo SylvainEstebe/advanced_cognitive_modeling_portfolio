@@ -31,3 +31,21 @@ X <- tibble(choice = example_data$choice,
   as.matrix()
 
 m2$sample(data = c(example_data, list(X=X, k = ncol(X))))
+
+
+
+# multilevel
+example_data <- list(
+  trials = 20,
+  initial_value = 0.5,
+  choice = sample(c(0,1), 20, replace = TRUE),
+  feedback = sample(c(-1,1), 20, replace = TRUE),
+  id = rep(1:2, each=10),
+  k = 2,
+  trial = rep(1:10, times = 2)
+)
+
+m3 <- cmdstan_model("Asignment/portfolio2/RL_multi.stan")
+samples <- m3$sample(data = c(as.list(d), trials = nrow(d), initial_value = 0.5,
+                              k = length(unique(d$id))), parallel_chains = 4)
+launch_shinystan(samples)
