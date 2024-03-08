@@ -55,6 +55,7 @@ for (t in 1:trials){
 
 generated quantities{
   real<lower=0, upper=1> alpha_prior;
+  real<lower=0> temperature_prior;
   real logtemperature_prior;
   
   real pe;

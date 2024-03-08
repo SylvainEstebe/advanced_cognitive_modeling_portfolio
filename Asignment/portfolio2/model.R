@@ -15,7 +15,7 @@ pacman::p_load(tidyverse,
                cmdstanr,
                brms, tidybayes)
 
-file <- file.path("~/Code/advanced_cognitive_modeling/portfolio2/stan_RL.stan")
+file <- here("Asignment/portfolio2/stan_RL.stan")
 mod <- cmdstan_model(file, cpp_options = list(stan_threads = TRUE),
                      stanc_options = list("O1"), pedantic = TRUE)
 data <- read_csv("~/Code/advanced_cognitive_modeling/simdata/rl_sim.csv")
