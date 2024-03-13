@@ -1,8 +1,9 @@
 // The input data are 3 vector 'choice_RL', 'choice_Random', 'feedback' and the number of trials "trials"
 data {
   int<lower=1> trials;
-  array[trials] int<lower=0,upper=2>  choice_RL; // outcome - NB make the previous choice from choice
-  array[trials] int<lower=0,upper=1> feedback ; // input
+  array[trials] int<lower=1,upper=2>  choice_RL; // outcome - NB make the previous choice from choice
+  array[trials] int<lower=-1,upper=1> feedback ; // input
+  int<lower=0,upper=1> prior_only;
 }
 
 // defiing variables that do not need to be changed when running the program.
@@ -18,8 +19,22 @@ parameters {
 }
 
 transformed parameters{
-  real invTemperature; // Inverse temperature, for the boundaries 
+  real<lower=0> invTemperature; // Inverse temperature, for the boundaries
   invTemperature = exp(logInvTemperature);
+  real predError;
+  // vector[2]  value;
+  matrix[2, trials] value;
+
+  value[,1] = initValue;
+
+  // model
+  for (t in 2:trials){
+
+    predError = feedback[t-1] - value[choice_RL[t-1],t-1];
+    value[choice_RL[t-1],t] = value[choice_RL[t-1],t-1] + alpha * predError; // update chosen V
+    value[3-choice_RL[t-1],t] = value[3-choice_RL[t-1],t-1];            // keep the non-chosen V
+
+  }
 }
 
 
@@ -27,57 +42,60 @@ transformed parameters{
 model {
 
  // local parameters
-  real predError;
-  vector[2]  value;
   vector[2]  prob;
 
  // priors
   //target += beta_lpdf(alpha | 2, 2); //     alpha ~ uni(0,1);
   //target += normal_lpdf(logInvTemperature | 0, 1); //   invTemperature ~ uni(0,20);
   target += uniform_lpdf(alpha | 0, 1); //     alpha ~ uni(0,1);
-  target += normal_lpdf(logInvTemperature | 0, 1); // exp(3) = 20, so 96% of the prior mass is <20
+  target += normal_lpdf(logInvTemperature | 0, 3); //   invTemperature ~ uni(0,20);
 
-  value = initValue;
+  // value[,1] = initValue;
 
  // model
-for (t in 1:trials){
-  prob = softmax(invTemperature * value);
+ if (!prior_only) {
+  for (t in 2:trials){
+
+  // predError = feedback[t-1] - value[choice_RL[t-1],t-1];
+  // value[choice_RL[t-1],t] = value[choice_RL[t-1],t-1] + alpha * predError; // update chosen V
+  // value[3-choice_RL[t-1],t] = value[3-choice_RL[t-1],t-1];
+  // keep the non-chosen V
+
+
+   prob = softmax(invTemperature * value[,t]);
   // problem here
   target += categorical_lpmf(choice_RL[t] | prob);
 
-  predError = feedback[t] - value[choice_RL[t]];
-  value[choice_RL[t]] = value[choice_RL[t]] + alpha * predError; // update chosen V
-
-
 }
+
+ }
  
 }
 
-generated quantities{
-  real<lower=0, upper=1> alpha_prior;
-  real<lower=0> temperature_prior;
-  real logtemperature_prior;
-  
-  real pe;
-  vector[2] value;
-  vector[2] prob;
-  
-  real log_lik;
-  
-  alpha_prior = uniform_rng(0,1);
-  logtemperature_prior = normal_rng(0, 1);
-  temperature_prior = exp(logtemperature_prior);
-  
-  value = initValue;
-  log_lik = 0;
-  
-  for (t in 1:trials) {
-        prob = softmax( logInvTemperature * value); // action prob. computed via softmax
-        log_lik = log_lik + categorical_lpmf(choice_RL[t] | prob);
-        
-        pe = feedback[t] - value[choice_RL[t]]; // compute pe for chosen value only
-        value[choice_RL[t]] = value[choice_RL[t]] + alpha * pe; // update chosen V
-    }
-}
+// generated quantities{
+//   // real<lower=0, upper=1> alpha_prior;
+//   // real<lower=0, upper=20> temperature_prior;
 
+//   real pe;
+//   matrix[2, trials] value;
+//   // vector[2] prob;
 
+//   // real log_lik;
+
+//   // alpha_prior = uniform_rng(0,1);
+//   // temperature_prior = uniform_rng(0,20);
+
+//   value[,1] = initValue;
+//   // log_lik = 0;
+
+//   for (t in 2:trials) {
+//         // log_lik = log_lik + categorical_lpmf(choice_RL[t] | prob);
+
+//         pe = feedback[t-1] - value[choice_RL[t-1], t-1]; // compute pe for chosen value only
+//         value[choice_RL[t-1],t] = value[choice_RL[t-1],t-1] + alpha * pe; // update chosen V
+//         value[3-choice_RL[t-1],t] = value[3-choice_RL[t-1],t-1];            // keep the non-chosen V
+//                                                                 //
+//         // prob = softmax( logInvTemperature * value[,t]); // action prob. computed via softmax
+//     }
+
+// }

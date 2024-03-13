@@ -1,13 +1,34 @@
-pacman::p_load(tidyverse)
-
-# Creation of agents
-# Random bias agent
+library(tidyverse)
 randomAgent <- function(bias){
   choice <- rbinom(1,1,bias)
   return(choice)
 }
 
-# Reinforcement Learning agent
+# Helper functions
+updateValue <- function(value, # A vector of values for either hand
+                        choice, # The choice from the previous round
+                        alpha, # The learning rate
+                        feedback # The feedback from the previous round
+){
+  
+  #PE <- feedback - value
+  
+  left_v1 <-  value[1] + alpha * (1-choice) * (feedback - value[1])
+  right_v2 <- value[2] + alpha * (choice) * (feedback - value[2])
+  
+  updated_values <- c(left_v1,right_v2)
+  
+  
+  return(updated_values)
+}
+
+
+softmax_func <-  function(x, tau) { # x is the expected value for each choice, tau is the temperature parameter, the higher the temperature, the more random the choice (more exploration)
+  exp_values <- exp(x / (1/tau))
+  prob <- exp_values / sum(exp_values)
+  return(prob)
+}
+
 RLAgent <- function(alpha, # Learning rate - how much weight does the agent put on new experience
                     tau,
                     value,
@@ -20,103 +41,75 @@ RLAgent <- function(alpha, # Learning rate - how much weight does the agent put 
   # Softmax
   probs <- softmax_func(values,tau)
   
-  newChoice <- rbinom(1,1,probs[2]) # We get the new choice by sampling from a binomial distribution where the probability of getting one corresponds to the probability of picking the right hand
+  #New choice (deterministic)
+  #newChoice <- ifelse(probs[1]>0, 0, 1)
+  
+  newChoice <- rbinom(1,1,1-probs[1]) # We get the new choice by sampling from a binomial distribution where the probability of getting one corresponds to the probability of picking the right hand
   outcome <- c(newChoice,values)
   
   return(outcome)
 }
 
-# Helper functionsz
-updateValue <- function(value, # A vector of values for either hand
-                        choice, # The choice from the previous round
-                        alpha, # The learning rate
-                        feedback # The feedback from the previous round 
-){
+
+do_sim <- function(trials = 30, alpha,tau , bias = 0.5, rate = 0.7) {
   
-  #PE <- feedback - value
+
+  # Create tibble to store results
+  results <- tibble('trial' = rep(NA, trials),
+                    'Agent1_choice' = rep(NA,trials),
+                    'Agent2_choice' = rep(NA,trials),
+                    'left_v1' = rep(NA,trials),
+                    'right_v2' = rep(NA,trials),
+                    'feedback' = rep(NA,trials),
+                    'cumulative' = rep(NA,trials),
+                    'alpha' = rep(NA,trials),
+                    'tau'= rep(NA,trials))
   
-  left_v1 <-  value[1] + alpha * (1-choice) * (feedback - value[1])
-  right_v2 <- value[2] + alpha * (choice) * (feedback - value[2])
+  # Get a random choice on the first trial (addding bias)
+  results$Agent1_choice[1] <- rbinom(1,1,0.5+bias)
+  results$Agent2_choice[1] <- randomAgent(rate)
   
-  updated_values <- c(left_v1,right_v2)
+  # Initiate values for RL agent - for simplicity, we set it to .5 which means that the agent is unbiased
+  results$left_v1[1] <- 0
+  results$right_v2[1] <- 0
   
-  return(updated_values)
+  results$trial[1] <- 1
+  
+  for (trial in 2:trials){
+    
+    # Get feedback from previous round
+    feedback <- ifelse(results$Agent1_choice[trial-1] == results$Agent2_choice[trial-1],1,-1)
+    
+    # Update values based on previous trial and make choice
+    Agent1 <- RLAgent(alpha = alpha,
+                      tau = tau,
+                      value = c(results$left_v1[trial-1],results$right_v2[trial-1]),
+                      choice = results$Agent1_choice[trial-1],
+                      feedback = feedback)
+    
+    Agent1_choice <- Agent1[1]
+    
+    
+    # Make choice for random bias agent
+    Agent2_choice <- randomAgent(rate)
+    
+    # Save results in tibble
+    results$feedback[trial-1] <- feedback
+    results$Agent1_choice[trial] <- Agent1_choice # choice of agent1 (REL)
+    results$Agent2_choice[trial] <- Agent2_choice # choice of agent2 (random)
+    
+    # the value of left and right
+    results$left_v1[trial] <- Agent1[2]
+    results$right_v2[trial] <- Agent1[3]
+    
+    # trials
+    results$trial[trial] <- trial
+    
+    # logging the cumulative feedback of agent1
+    results$cumulative <- cumsum(results$Agent1_choice) / seq_along(results$Agent1_choice)
+    results$alpha = alpha
+    results$tau = tau
+  }
+  results <- filter(results, complete.cases(feedback))
+  return(results)
 }
-
-
-softmax_func <-  function(x, tau) { 
-  exp_values <- exp(x / (1/tau))
-  prob <- exp_values / sum(exp_values)
-  return(prob)
-}
-
-
-# Matching pennie game simulation
-
-# parameters
-trials <- 30 # number of trial in the game
-alpha <- 0.6 # learning rate
-tau <- 0.8 # inverse temperature
-rate <- 0.7 # biais for random agent
-
-# Create tibble to store results
-
-results <- tibble('trial' = rep(NA,trials),
-                  'Agent1_choice' = rep(NA,trials), 
-                  'Agent2_choice' = rep(NA,trials),
-                  'left_v1' = rep(NA,trials),
-                  'right_v2' = rep(NA,trials),
-                  'feedback' = rep(NA,trials))
-
-# Get a random choice on the first trial
-results$Agent1_choice[1] <- rbinom(1,1,0.5)
-results$Agent2_choice[1] <- randomAgent(rate)
-
-# Initiate values for RL agent - for simplicity, we set it to .5 which means that the agent is unbiased
-results$left_v1[1] <- .5
-results$right_v2[1] <- .5
-
-
-# play differents trials and save the result
-for (trial in 2:trials){
-  
-  # Get feedback from previous round
-  feedback <- ifelse(results$Agent1_choice[trial-1] == results$Agent2_choice[trial-1],1,0)
-  
-  # Update values based on previous trial and make choice
-  Agent1 <- RLAgent(alpha = alpha,
-                    tau = tau,
-                    value = c(results$left_v1[trial-1],results$right_v2[trial-1]),
-                    choice = results$Agent1_choice[trial-1],
-                    feedback = feedback)
-  
-  Agent1_choice <- Agent1[1]
-  
-  # Make choice for random bias agent
-  Agent2_choice <- randomAgent(rate)
-  
-  # Save results in tibble
-  results$feedback[trial-1] <- feedback
-  
-  results$Agent1_choice[trial] <- Agent1_choice
-  results$Agent2_choice[trial] <- Agent2_choice
-  
-  results$left_v1[trial] <- Agent1[2]
-  results$right_v2[trial] <- Agent1[3]
-  
-}
-results$feedback[30] <- feedback
-feedback <- ifelse(results$Agent1_choice[30] == results$Agent2_choice[30],1,0)
-
-results <- results %>% mutate(
-  trial = seq(trials))
-
-write_csv(results, "~/Code/advanced_cognitive_modeling/simdata/rl_sim.csv")
-
-# plot
-p1 <- ggplot(results) + 
-  geom_line(aes(trial, left_v1), color = "green") + 
-  geom_line(aes(trial, right_v2), color = "blue") +
-  theme_bw()
-p1
-
