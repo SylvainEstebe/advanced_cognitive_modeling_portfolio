@@ -4,17 +4,18 @@ pacman::p_load(tidyverse,
                cmdstanr,
                brms, tidybayes)
 
+
 # Loading model
 file <- file.path("~/Code/advanced_cognitive_modeling/portfolio2/stan_RL.stan")
 # Loading simulation
 source("~/Code/advanced_cognitive_modeling/portfolio2/rl_agent.R")
 # Create combinatory dataframe of each parameters
-param <- expand_grid(tau = c(0.01,0.5,1,5,10,15) , alpha = seq(0,1,0.1))
+param <- expand_grid(tau = exp(linspace(-1, 1, 5)) , alpha = seq(0,1,0.1))
 
 # Run simulation for each parameter combination and save them in a dataframe
 data_sim <- NULL
 for (i in 1:nrow(param)) {
-  data_sim <- rbind(data_sim,do_sim(trials = 500, rate = 0.8, alpha = param$alpha[i], tau = param$tau[i]))
+  data_sim <- rbind(data_sim,do_sim(trials = 100, rate = 0.8, alpha = param$alpha[i], tau = param$tau[i]))
 }
 # Load stan model
 mod <- cmdstan_model(file)
@@ -71,7 +72,7 @@ data <- read_csv("~/Code/advanced_cognitive_modeling/simdata/rl_sim.csv")
   results$estimated_tau[i] <- mean(draws_df$logInvTemperature)
   
   temp <- tibble(estimated_alpha = draws_df$alpha, 
-                 true_alpha = param$alpha[i], tau = param$tau[i],estimated_tau = draws_df$logInvTemperature, 
+                 true_alpha = param$alpha[i], tau = log(param$tau[i]),estimated_tau = draws_df$logInvTemperature, 
                  true_tau = log(param$tau[i]), alpha = param$alpha[i])
   
   
@@ -83,12 +84,12 @@ data <- read_csv("~/Code/advanced_cognitive_modeling/simdata/rl_sim.csv")
 ggplot(results, aes(true_alpha, estimated_alpha)) +
   geom_point() +
   geom_abline(intercept = 0, slope = 1, color = "red") +  # Added label line
-  facet_wrap(.~true_tau)+
+  facet_wrap(.~true_tau,scales="free_y")+
   theme_minimal() +
   scale_colour_viridis_c() +
   theme(panel.grid.minor = element_blank())+
   ylim(0,1) + 
-labs(title = "True alpha against estimated alpha for each Tau",  # Added label for plot title
+labs(title = "True alpha against estimated alpha for each Tau (500 trials recovery)",  
        x = "True Alpha",  # Added label for x-axis
        y = "Estimated Alpha",  # Added label for y-axis)
 )
@@ -96,31 +97,35 @@ labs(title = "True alpha against estimated alpha for each Tau",  # Added label f
 ggplot(recovery_df, aes(true_alpha, estimated_alpha)) +
   geom_point(alpha = 0.1) +
   geom_smooth() +
-  facet_wrap(.~tau) +
+  geom_abline(intercept = 0, slope = 1, color = "red") +  # Added label line
+  facet_wrap(.~true_tau,scales="free_y") +
   theme_classic() +
-labs(title = "True alpha against estimated alpha for each Tau",  # Added label for plot title
+  ylim(0,10) +
+labs(title = "True alpha against estimated alpha for each Tau (500 trials recovery)",  
      x = "True Alpha",  # Added label for x-axis
      y = "Estimated Alpha",  # Added label for y-axis)
 )
 
+
 ggplot(recovery_df, aes(true_tau, estimated_tau)) +
   geom_point(alpha = 0.1) +
   geom_smooth() +
-  facet_wrap(.~alpha) +
-  theme_classic()  +
-  labs(title = "True log(tau) against estimated log(tau) for each alpha",  # Added label for plot title
+  geom_abline(intercept = 0, slope = 1, color = "red") +  # Added label line
+  facet_wrap(.~true_alpha,scales="free_y") +
+  theme_classic() +
+  labs(title = "True log(tau) against estimated log(tau) for each alpha (500 trials recovery)",  # Added label for plot title
        x = "True log(tau)",  # Added label for x-axis
        y = "Estimated log(tau)",  # Added label for y-axis)
   )
 
-ggplot(results, aes(true_tau, estimated_tau)) +
+ggplot(results, aes(true_tau, estimated_tau),scale = "free_y") +
   geom_point() +
   geom_abline(intercept = 0, slope = 1, color = "red") +  # Added label line
-  facet_wrap(.~true_alpha)+
+  facet_wrap(.~true_alpha, scales="free_y")+
   theme_minimal() +
-  theme(panel.grid.minor = element_blank())+
   scale_colour_viridis_c() +
-  labs(title = "True log(tau) against estimated log(tau) for each alpha",  # Added label for plot title
+  theme(panel.grid.minor = element_blank())+
+  ylim(-10,10) +   labs(title = "True log(tau) against estimated log(tau) for each alpha (500 trials recovery)",  # Added label for plot title
        x = "True log(tau)",  # Added label for x-axis
        y = "Estimated log(tau)",  # Added label for y-axis)
   )
