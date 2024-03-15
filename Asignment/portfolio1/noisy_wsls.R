@@ -179,47 +179,42 @@ do_sim <- function(theta1, theta2, sigma, n) {
 }
 
 
-sim_res <- expand_grid(
-  theta1 = seq(0.5, 1, by = 0.1),
-  ## theta2 = seq(0.5, 1, by = 0.1),
-  theta2 = 1,
-  sigma = seq(0.5, 1, by = 0.1)) |>
-  #sample_n(100) |>
-  mutate(result = future_pmap(list(theta1, theta2, sigma), do_sim, 200, .options = furrr_options(seed = TRUE)))
+## sim_res <- expand_grid(
+##   theta1 = seq(0.5, 1, by = 0.1),
+##   ## theta2 = seq(0.5, 1, by = 0.1),
+##   theta2 = 1,
+##   sigma = seq(0.5, 1, by = 0.1)) |>
+##   #sample_n(100) |>
+##   mutate(result = future_pmap(list(theta1, theta2, sigma), do_sim, 200, .options = furrr_options(seed = TRUE)))
 
 
-cum_winrate <- function(res) {
-  cumsum(res) / 1:length(res)
-}
+## cum_winrate <- function(res) {
+##   cumsum(res) / 1:length(res)
+## }
 
 ## mutate(sim_res, winrate = map(result, cum_winrate)) |>
 ##   unnest(winrate)
 
-sim_res |>
-  unnest(result) |>
-  filter(theta2 == 1) |>
-  group_by(theta1, theta2, sigma) |>
-  mutate(i = 1:n(),
-         winrate = cum_winrate(winner)) |>
-  ggplot() +
-<<<<<<< HEAD
-  geom_hline(yintercept = 0.5, linetype = "dashed") +
-  geom_line(aes(i, winrate, color = sigma, group = sigma)) +
-  scale_color_viridis() +
-  theme_classic() +
-  scale_y_continuous(labels = scales::percent_format()) +
-  facet_grid(theta1~., labeller=label_both) +
-  labs(color = "theta2")
-ggsave("winrate_wsls_tom.png")
-=======
-  geom_line(aes(i, winrate, color = factor(sigma), group = sigma)) +
-  facet_grid(theta1~.)
+## sim_res |>
+##   unnest(result) |>
+##   filter(theta2 == 1) |>
+##   group_by(theta1, theta2, sigma) |>
+##   mutate(i = 1:n(),
+##          winrate = cum_winrate(winner)) |>
+##   ggplot() +
+##   geom_hline(yintercept = 0.5, linetype = "dashed") +
+##   geom_line(aes(i, winrate, color = sigma, group = sigma)) +
+##   scale_color_viridis() +
+##   theme_classic() +
+##   scale_y_continuous(labels = scales::percent_format()) +
+##   facet_grid(theta1~., labeller=label_both) +
+##   labs(color = "theta2")
+## ggsave("winrate_wsls_tom.png")
 
->>>>>>> origin/main
 
-sim_res |>
-  unnest(result) |>
-  group_by(theta, sigma) |>
-  summarise(wins = mean(winner)) |>
-  ggplot() +
-  geom_tile(aes(theta, sigma, fill = wins))
+## sim_res |>
+##   unnest(result) |>
+##   group_by(theta, sigma) |>
+##   summarise(wins = mean(winner)) |>
+##   ggplot() +
+##   geom_tile(aes(theta, sigma, fill = wins))
