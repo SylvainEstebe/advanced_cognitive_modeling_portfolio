@@ -54,7 +54,7 @@ mcmc_intervals(fit$draws(c("alpha", "invTemperature")))
 ## TEMPERATURE=1
 
 yrep_prior <- as_draws_df(fit_prior) |>
-  select(!c("lp__", "alpha", "logInvTemperature", "invTemperature", "predError")) |>
+  select(!c("lp__", "alpha", "logInvTemperature", "predError")) |>
   pivot_longer(starts_with("value")) |>
   mutate(trial = parse_number(str_split_i(name, ",", 2)),
          choice = parse_number(str_split_i(name, ",", 1))#,
@@ -63,15 +63,15 @@ yrep_prior <- as_draws_df(fit_prior) |>
   select(-name) |>
   group_by(trial, .chain, .iteration, .draw) |>
   pivot_wider(names_from = choice, values_from = value, names_prefix = "choice_") |>
-  mutate(exp_1 = exp(choice_1 * 1),
-         exp_2  = exp(choice_2 * 1),
+  mutate(exp_1 = exp(choice_1 * invTemperature),
+         exp_2  = exp(choice_2 * invTemperature),
          softmax_2 = exp_2 / (exp_1 + exp_2)) |>
   mutate(source = "prior")
 
 
 
 yrep_posterior <- as_draws_df(fit) |>
-  select(!c("lp__", "alpha", "logInvTemperature", "invTemperature", "predError")) |>
+  select(!c("lp__", "alpha", "logInvTemperature", "predError")) |>
   pivot_longer(starts_with("value")) |>
   mutate(trial = parse_number(str_split_i(name, ",", 2)),
          choice = parse_number(str_split_i(name, ",", 1))#,
@@ -80,38 +80,45 @@ yrep_posterior <- as_draws_df(fit) |>
   select(-name) |>
   group_by(trial, .chain, .iteration, .draw) |>
   pivot_wider(names_from = choice, values_from = value, names_prefix = "choice_") |>
-  mutate(exp_1 = exp(choice_1 * 1),
-         exp_2  = exp(choice_2 * 1),
+  mutate(exp_1 = exp(choice_1 * invTemperature),
+         exp_2  = exp(choice_2 * invTemperature),
          softmax_2 = exp_2 / (exp_1 + exp_2))|>
   mutate(source = "posterior")
 
 
 bind_rows(yrep_prior, yrep_posterior) |>
   ## yrep_posterior |>
-  filter(trial <= 15) |>
-  group_by(trial) |>
-  #sample_n(10) |>
-  ungroup() |>
+  filter(trial <= 16) |>
+  ## mutate(label = str_c("trial ", trial, ", feedback "))
+  ## group_by(trial) |>
+  ## #sample_n(10) |>
+  ## ungroup() |>
   ggplot(aes(color = source)) +
-  geom_density(aes(softmax_2, after_stat(scaled))) +
-  ## geom_histogram(aes(choice_2))+
-  #scale_y_continuous(limits=c(-1,1)) +
-  facet_wrap(~trial) +
-  geom_vline(aes(xintercept = exp(right_v2)/(exp(right_v2)+exp(left_v1))), data=filter(sim_data, trial <= 15))
+  #geom_density(aes(softmax_2, after_stat(scaled))) +
+  geom_histogram(aes(softmax_2, after_stat(ncount)), fill = NA, position="identity", binwidth=0.025) +
+  scale_x_continuous(limits=c(0,1), labels = scales::percent_format()) +
+  facet_wrap(~trial, labeller=label_both) +
+  geom_vline(aes(xintercept = exp(right_v2)/(exp(right_v2)+exp(left_v1))), data=filter(sim_data, trial <= 16)) +
+  ggthemes::theme_tufte() +
+  theme(axis.ticks.y = element_blank(),
+        axis.text.y  = element_blank()) +
+  labs(x = "Probability of chosing option 2",
+       title = "Predictive check", y = "")
+ggsave("Asignment/portfolio2/predictive_check.png")
 
 
 
-yrep |>
+yrep_posterior |>
   group_by(trial) |>
-  summarise(mean_qi(value)) |>
+  summarise(mean_qi(choice_2)) |>
   ggplot(aes(trial, y)) +
   #scale_y_continuous(limits=c(0,1)) +
   #geom_line(aes(y=right_v2), color = "blue", data=mutate(sim_data, y = exp(right_v2)/(exp(left_v1)+exp(right_v2))))
   ## geom_line()
   ## geom_density(aes(value, after_stat(scaled))) +
-  ## scale_x_continuous(limits=c(.45,0.7)) +
+  #scale_y_continuous(limits=c(0.5,1)) +
   ## facet_wrap(~trial) +
-  geom_line(aes(y = exp(right_v2)/(exp(right_v2)+exp(left_v1))), data=sim_data) +
+  #geom_line(aes(y = exp(right_v2)/(exp(right_v2)+exp(left_v1))), data=sim_data) +
   geom_line(aes(y=y), color = "red")
 
 
