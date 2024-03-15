@@ -11,12 +11,12 @@ example_data <- list(
   feedback = sample(c(-1,1), 10, replace = TRUE)
 )
 
-m1 <- cmdstan_model("Asignment/portfolio2/RL_single.stan")
+m1 <- cmdstan_model("portfolio2/RL_single.stan")
 m1$sample(data = example_data)
 
 
 
-m2 <- cmdstan_model("Asignment/portfolio2/WSLS_single.stan")
+m2 <- cmdstan_model("portfolio2/WSLS_single.stan")
 
 X <- tibble(choice = example_data$choice,
             feedback = example_data$feedback) |>
@@ -45,7 +45,7 @@ example_data <- list(
   trial = rep(1:10, times = 2)
 )
 
-m3 <- cmdstan_model("Asignment/portfolio2/RL_multi.stan")
+m3 <- cmdstan_model("portfolio2/RL_multi.stan")
 samples <- m3$sample(data = c(as.list(d), trials = nrow(d), initial_value = 0.5,
                               k = length(unique(d$id))), parallel_chains = 4)
 launch_shinystan(samples)

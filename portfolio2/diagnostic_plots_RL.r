@@ -11,7 +11,7 @@ set_cmdstan_path("~/.cmdstan/cmdstan-2.34.1")
 
 # diagnostic plots for a model fitted on data from a simulated matching pennies game with an RL agent
 
-source("Asignment/portfolio2/RL_sim.R")
+source("portfolio2/RL_sim.R")
 sim_data <- do_sim(trials = 100, # Number of times the game is played
                    rate = 0.8, # Bias of the random agent
                    alpha = 0.4, # Learning rate
@@ -20,7 +20,7 @@ sim_data <- do_sim(trials = 100, # Number of times the game is played
                    )
 
 # Loading in the model
-m1 <- cmdstan_model("Asignment/portfolio2/stan_RL.stan")
+m1 <- cmdstan_model("portfolio2/stan_RL.stan")
 
 
 fit <- m1$sample(data = list(trials = nrow(sim_data),

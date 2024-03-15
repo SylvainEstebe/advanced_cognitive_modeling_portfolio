@@ -18,11 +18,11 @@ set_cmdstan_path("~/.cmdstan/cmdstan-2.34.0")
 ##   feedback = sample(c(-1, 1), 10, replace = TRUE)
 ## )
 
-source("Asignment/portfolio2/RL_sim.R")
+source("portfolio2/RL_sim.R")
 sim_data <- do_sim(trials = 100, rate = 0.8, alpha = 0.4)
 
-## m1 <- cmdstan_model("Asignment/portfolio2/RL_single.stan")
-m1 <- cmdstan_model("Asignment/portfolio2/stan_RL.stan")
+## m1 <- cmdstan_model("portfolio2/RL_single.stan")
+m1 <- cmdstan_model("portfolio2/stan_RL.stan")
 
 fit <- m1$sample(data = list(trials = nrow(sim_data),
                                  ## initial_value = 0.5,
@@ -104,7 +104,7 @@ bind_rows(yrep_prior, yrep_posterior) |>
         axis.text.y  = element_blank()) +
   labs(x = "Probability of chosing option 2",
        title = "Predictive check", y = "")
-ggsave("Asignment/portfolio2/predictive_check.png")
+ggsave("portfolio2/predictive_check.png")
 
 
 
