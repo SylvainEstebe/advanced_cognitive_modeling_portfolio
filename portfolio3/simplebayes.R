@@ -15,15 +15,12 @@ one_participant <- data_patients |>
 
 simple_beta_bayes <- function(df, lb = 1, ub = 8, invTemperature = 1) {
 
-  df$belief <- NA
+  N <- nrow(df)
+  shape1 <- invTemperature * (df$FirstRating + df$GroupRating - 2 * lb)
+  shape2 <- invTemperature * (2 * (ub - lb)) - shape1
+  belief <- rbeta(N, shape1, shape2)
+  df$SecondRating_predicted <- lb + rbinom(N, ub - lb, belief)
 
-  for (i in seq_len(nrow(df))) {
-    shape1 <- invTemperature * (pluck(df, "FirstRating", i) + pluck(df, "GroupRating", i) - 2 * lb)
-    shape2 <- invTemperature * (2 * (ub-lb)) - shape1
-    print(c(i, shape1, shape2))
-    df[i, "belief"] <- rbeta(1, shape1, shape2)
-    df[i, "SecondRating_predicted"] <- rbinom(1, ub - lb, pluck(df, "belief", i)) + lb
-  }
   return(df)
 }
 
