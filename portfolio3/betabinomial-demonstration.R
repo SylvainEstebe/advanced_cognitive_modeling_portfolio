@@ -30,7 +30,7 @@ simple_beta_bayes <- function(df, lb = 1, ub = 8, invTemperature = 1) {
 ##   ggplot() +
 ##   geom_point(aes(FaceID, error))
 
-simple_betabayes <- cmdstan_model("portfolio3/betabayes.stan")
+simple_betabayes <- cmdstan_model("portfolio3/betabinomial-simple-single.stan")
 fit <- simple_betabayes$sample(data = list(N = nrow(one_participant),
                                            lb = 1,
                                            ub = 8,
