@@ -32,7 +32,7 @@ sim_simple <- one_participant |>
 ## compile models
 simple_betabayes <- cmdstan_model("portfolio3/betabinomial-simple-single.stan")
 
-fit_gumball <- function(model, data, lb = 1, ub = 8) {
+fit_gumball <- function(model, data, lb = 1, ub = 8, fixed_param = FALSE) {
     model$sample(
         data = list(
             N = nrow(data),
@@ -42,11 +42,12 @@ fit_gumball <- function(model, data, lb = 1, ub = 8) {
             GroupRating = data$GroupRating,
             SecondRating = data$SecondRating
         ),
-        parallel_chains = 4
+        parallel_chains = 4,
+        fixed_param = fixed_param
     )
 }
 
-m1 <- fit_gumball(simple_betabayes, sim_simple)
+m1 <- fit_gumball(simple_betabayes, sim_simple, fixed_param = TRUE)
 
 ## simple_beta_bayes(one_participant, invTemperature = 0.1) |>
 ##   mutate(error = SecondRating_predicted - SecondRating) |>
