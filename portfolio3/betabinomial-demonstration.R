@@ -24,9 +24,13 @@ simple_beta_bayes <- function(df, lb = 1, ub = 8, invTemperature = 1) {
   return(df)
 }
 
+## simulate data from the model to assess whether the models can be fit.
+sim_simple <- one_participant |>
+  simple_beta_bayes()
+
+
 ## compile models
 simple_betabayes <- cmdstan_model("portfolio3/betabinomial-simple-single.stan")
-weighted_betabayes <- cmdstan_model("portfolio3/betabinomial-weighted-single.stan")
 
 fit_gumball <- function(model, data, lb = 1, ub = 8) {
     model$sample(
@@ -42,37 +46,10 @@ fit_gumball <- function(model, data, lb = 1, ub = 8) {
     )
 }
 
-## simulate data from the model to assess whether the models can be fit.
-sim_simple <- one_participant |>
-  simple_beta_bayes()
-
 m1 <- fit_gumball(simple_betabayes, sim_simple)
-m2 <- fit_gumball(weighted_betabayes, sim_simple)
-
-loo_compare(m1$loo(), m2$loo())
 
 ## simple_beta_bayes(one_participant, invTemperature = 0.1) |>
 ##   mutate(error = SecondRating_predicted - SecondRating) |>
 ##   ggplot() +
 ##   geom_point(aes(FaceID, error))
 
-simple_betabayes <- cmdstan_model("portfolio3/betabinomial-simple-single.stan")
-
-fit <- simple_betabayes$sample(data = list(N = nrow(one_participant),
-                                           lb = 1,
-                                           ub = 8,
-                                           FirstRating = one_participant$FirstRating,
-                                           GroupRating = one_participant$GroupRating,
-                                           SecondRating = one_participant$SecondRating),
-                               parallel_chains = 4)
-
-
-fit2 <- weighted_betabayes$sample(data = list(N = nrow(one_participant),
-                                           lb = 1,
-                                           ub = 8,
-                                           FirstRating = one_participant$FirstRating,
-                                           GroupRating = one_participant$GroupRating,
-                                           SecondRating = one_participant$SecondRating),
-                               parallel_chains = 4)
-
-loo_compare(fit$loo(), fit2$loo())
