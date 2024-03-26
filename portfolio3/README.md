@@ -14,7 +14,7 @@ I model the belief corresponding to each rating as a beta distribution. If `α` 
 A rating of 1 is the lowest possible (`beta(1+0, 1+7)`), a rating of 8 is the highest possible (`beta(1+7, 1+0)`), and for example a rating of 4 is then `beta(1+4, 1+3)`. Once this evidence has been combined (we assume the participants do something similar in their head/brain), the distribution of rates `θ` that come out can be used as input to a `binomial` likelihood, which models `k` successes out of `n` bernoulli trials with probability `θ`. This second trick is built into stan with the `beta_binomial` distribution, which skips the `θ` and goes straight from `α,β` to the `k` of `n` "successes". 
 
 Simplifying a bit to ignore the boundaries, the model is then:
-`target += beta_binomial_lpmf(SecondRating | 7, 1 + FirstRating + GroupRating, 14 - (Firstrating + GroupRating))`
+`target += beta_binomial_lpmf(SecondRating | 7, 1 + FirstRating + GroupRating, 14 - (FirstRating + GroupRating))`
 
 
 ## Details
