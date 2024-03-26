@@ -8,3 +8,8 @@ tmp/
 
 
 portfolio3/data
+
+portfolio2/RL_multi
+portfolio3/betabinomial-simple-single
+portfolio3/betabinomial-weighted-single
+portfolio3/betabinomial-weighted-single-temp
