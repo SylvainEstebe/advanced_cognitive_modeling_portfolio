@@ -44,14 +44,14 @@ model {
 }
 
 generated quantities {
-  vector[trials] loglik;
-  array[trials] int rating;
+  vector[trials] log_lik;
+  array[trials] int y_rep;
   
   for (t in 1:trials){
     real belief;
     belief = inv_logit(bias + w1*logit(FirstRating_scaled[t])+w2*logit(GroupRating_scaled[t]));
-    loglik[t] = binomial_lpmf(SecondRating[t]-1 | 7, belief);
-    rating[t] = binomial_rng(7,belief);
+    log_lik[t] = binomial_lpmf(SecondRating[t]-1 | 7, belief);
+    y_rep[t] = binomial_rng(7,belief);
   }
 }
 
