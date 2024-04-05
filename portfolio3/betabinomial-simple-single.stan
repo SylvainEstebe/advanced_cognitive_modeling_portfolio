@@ -47,7 +47,10 @@ model {
 
 generated quantities {
   vector[N] log_lik;
+  array[N] int y_rep;
+
   for (i in 1:N) {
-    log_lik[i] = beta_binomial_lpmf(y[i] | ub - lb, 1 + shape1[i], 1 + (shape2[i] - shape1[i]));
+    log_lik[i]    = beta_binomial_lpmf(y[i] | ub - lb, 1 + shape1[i], 1 + shape2[i] - shape1[i]);
+    y_rep[i] = lb + beta_binomial_rng(        ub - lb, 1 + shape1[i], 1 + shape2[i] - shape1[i]);
   }
 }
