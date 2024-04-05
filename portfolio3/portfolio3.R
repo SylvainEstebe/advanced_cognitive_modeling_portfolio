@@ -48,7 +48,7 @@ weighted_bayes <- cmdstan_model("portfolio3/weighted_Bayes_model.stan")
 
 #weighted_temp_betabayes <- cmdstan_model("portfolio3/betabinomial-weighted-single-temp.stan")
 
-fit_betabayes <- function(model, data, lb = 1, ub = 8, fixed_param=FALSE) {
+fit_betabayes <- function(model, data, lb = 1, ub = 8, fixed_param=FALSE, iter=100) {
     model$sample(
         data = list(
             N = nrow(data),
@@ -58,13 +58,14 @@ fit_betabayes <- function(model, data, lb = 1, ub = 8, fixed_param=FALSE) {
             GroupRating = data$GroupRating,
             SecondRating = data$SecondRating
         ),
+        iter_sampling=iter,
         parallel_chains = 4,
         adapt_delta=.95,
         fixed_param=fixed_param
     )
 }
 
-fit_bayes <- function(model, data) {
+fit_bayes <- function(model, data, iter=100) {
     model$sample(
         data = list(
             trials = nrow(data),
@@ -72,6 +73,7 @@ fit_bayes <- function(model, data) {
             GroupRating = data$GroupRating,
             SecondRating = data$SecondRating
         ),
+        iter_sampling=iter,
         parallel_chains = 4,
         adapt_delta=.95
     )
@@ -109,74 +111,60 @@ fit_bayes <- function(model, data) {
 
 
 
+model_names <- c(
+  "Beta-Binomial (Simple)",
+  "Beta-Binomial (Weighted)",
+  "Add-logits (Simple)",
+  "Add-logits (weighted)"
+)
 
-x <- data_patients |>
-  head(200) |>
+results <- data_patients |>
+  filter(ID %in% c("201", "203")) |>
   group_by(ID) |>
   group_modify(function(data, participant) {
     m1 <- fit_betabayes(simple_betabayes, data, fixed_param = TRUE)
     m2 <- fit_betabayes(weighted_betabayes, data)
     m3 <- fit_bayes(simple_bayes, data)
     m4 <- fit_bayes(weighted_bayes, data)
+    models <- list(m1,m2,m3,m4
+                   )
     distinct(data, Condition) |>
-      mutate(loo   = list(rownames_to_column(as_tibble(loo_compare(m1$loo(), m2$loo(), m3$loo(), m4$loo()), rownames = NA))),
-             y_rep = list(as_draws_df(m1$draws("y_rep"))))
-  })
+      mutate(loo   = list(rownames_to_column(as_tibble(loo_compare(map(models, \(x) x$loo())), rownames = NA)) |>
+                            rename(model = rowname)),
+             y_rep = list(map(models, \(x) as_draws_df(x$draws("y_rep")))))
+  }) |>
+  ungroup()
 
 ## model comparison result, by ID
-unnest(x, loo) |>
-  mutate(ymin = elpd_diff - 2 * se_diff,
-         ymax = elpd_diff + 2  *se_diff) |>
-  mutate(top_model = rowname[])
-  ggplot(aes(ID, elpd_diff, ymin=ymin, ymax=ymax, color=rowname)) +
-  geom_pointrange()
+## unnest(x, loo) |>
+##   mutate(ymin = elpd_diff - 2 * se_diff,
+##          ymax = elpd_diff + 2 * se_diff) |>
+##   mutate(top_model = model[])
+##   ggplot(aes(ID, elpd_diff, ymin=ymin, ymax=ymax, color=model)) +
+##   geom_pointrange()
 
 
-unnest(x, loo) |>
+unnest(results, loo) |>
   filter(elpd_diff == 0) |>
-  ggplot(aes(rowname)) +
+  ggplot(aes(model)) +
   geom_histogram(stat="count")
 
 
 ## posterior predictive check
-y <- head(data_patients, 200)$SecondRating
+y <- data_patients |>
+  filter(ID %in% c("201", "203")) |>
+  select(ID, Condition, FaceID, SecondRating) |>
+  mutate(trial = FaceID + 1)
 
-yrep <- unnest(x, y_rep) |>
-  ungroup() |>
-  select(-ID, -Condition, yrep-loo)
+yrep <- unnest(results, c(loo, y_rep)) |>
+  select(-c(elpd_diff, se_diff, elpd_loo, se_elpd_loo, p_loo, se_p_loo, looic, se_looic)) |>
+  mutate(yrep = map(y_rep, \(x) spread_draws(x, y_rep[trial], ndraws=10))) |>
+  select(-y_rep) |>
+  unnest(yrep)
 
-yrep_groups <- unnest(x, y_rep) |>
-  ungroup() |>
-  select(ID)
-
-
-ppc_dens_overlay_grouped(y, as.matrix(yrep), yrep_groups)
-
-
-
-## old code
-posterior <- m2$draws(variable = c("log_weight_mu", "log_weight_delta"))
-
-mcmc_trace(posterior)
-mcmc_pairs(posterior)
-
-
-y <- one_participant$SecondRating
-yrep <- as_draws(m3, variable = "yrep", format="matrix")[1:50,]
-ppc_dens_overlay(y, yrep)
-
-
-### try the whole dataset with no pooling
-## m1 <- fit_gumball(simple_betabayes, data_patients, fixed_param=TRUE)
-## m2 <- fit_gumball(weighted_betabayes, data_patients)
-## ## m3 <- fit_gumball(weighted_temp_betabayes, data_patients)
-
-## l1 <- m1$loo()
-## l2 <- m2$loo()
-## ## l3 <- m3$loo()
-
-## loo_compare(l1, l2, l3)
-
-## y <- data_patients$SecondRating
-## yrep <- as_draws(m2, variable = "yrep", format="matrix")[1:10,]
-## ppc_dens_overlay(y, yrep)
+ggplot(y) +
+  geom_freqpoly(aes(y_rep, after_stat(density), group = str_c(.draw, model), color = model), data = yrep, binwidth=1, alpha=.5) +
+  geom_freqpoly(aes(SecondRating, after_stat(density)), binwidth=1) +
+  scale_color_discrete(labels = model_names) +
+  scale_x_continuous(breaks = seq(0,8)) +
+  facet_wrap(~ID)
