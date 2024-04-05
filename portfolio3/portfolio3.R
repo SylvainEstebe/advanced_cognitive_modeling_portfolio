@@ -50,7 +50,7 @@ betashift <- cmdstan_model("portfolio3/betashift.stan")
 
 #weighted_temp_betabayes <- cmdstan_model("portfolio3/betabinomial-weighted-single-temp.stan")
 
-fit_betabayes <- function(model, data, lb = 1, ub = 8, fixed_param=FALSE, iter=100) {
+fit_betabayes <- function(model, data, lb = 1, ub = 8, fixed_param=FALSE, iter=500) {
     model$sample(
         data = list(
             N = nrow(data),
@@ -67,7 +67,7 @@ fit_betabayes <- function(model, data, lb = 1, ub = 8, fixed_param=FALSE, iter=1
     )
 }
 
-fit_bayes <- function(model, data, iter=100) {
+fit_bayes <- function(model, data, iter=500) {
     model$sample(
         data = list(
             trials = nrow(data),
@@ -81,7 +81,7 @@ fit_bayes <- function(model, data, iter=100) {
     )
 }
 
-fit_betashift <- function(model, data, iter=100) {
+fit_betashift <- function(model, data, iter=500) {
     model$sample(
         data = list(
             N = nrow(data),
@@ -143,6 +143,7 @@ results <- data_patients |>
     m3 <- fit_bayes(simple_bayes, data)
     m4 <- fit_bayes(weighted_bayes, data)
     m5 <- fit_betashift(betashift, data)
+    print(m2)
     models <- list(m1, m2, m3, m4, m5)
     loo_result <- map(models, \(x) x$loo()) |>
       loo_compare() |>
@@ -188,5 +189,5 @@ ggplot(y) +
   geom_freqpoly(aes(y_rep, after_stat(density), group = str_c(.draw, model), color = model), data = yrep, binwidth=1, alpha=.5) +
   geom_freqpoly(aes(SecondRating, after_stat(density)), binwidth=1) +
   scale_color_discrete(labels = model_names) +
-  scale_x_continuous(breaks = seq(0,8)) +
+  scale_x_continuous(breaks = seq(0,8), limits = c(1, 8)) +
   facet_wrap(~ID)
