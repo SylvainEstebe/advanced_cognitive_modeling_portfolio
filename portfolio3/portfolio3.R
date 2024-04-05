@@ -42,9 +42,9 @@ sim_weighted_betabinomial <- function(df, lb = 1, ub = 8, invTemperature = 1, lo
 ## compile models
 simple_betabayes <- cmdstan_model("portfolio3/betabinomial-simple-single.stan")
 weighted_betabayes <- cmdstan_model("portfolio3/betabinomial-weighted-single.stan")
-weighted_temp_betabayes <- cmdstan_model("portfolio3/betabinomial-weighted-single-temp.stan")
+#weighted_temp_betabayes <- cmdstan_model("portfolio3/betabinomial-weighted-single-temp.stan")
 
-fit_gumball <- function(model, data, lb = 1, ub = 8, fixed_param=FALSE) {
+fit_betabayes <- function(model, data, lb = 1, ub = 8, fixed_param=FALSE) {
     model$sample(
         data = list(
             N = nrow(data),
@@ -60,43 +60,56 @@ fit_gumball <- function(model, data, lb = 1, ub = 8, fixed_param=FALSE) {
     )
 }
 
-## simulate data from the model to assess whether the models can be fit.
-sim_simple <- one_participant |>
-  sim_simple_betabinomial()
-m1 <- fit_gumball(simple_betabayes, sim_simple, fixed_param=TRUE)
-m2 <- fit_gumball(weighted_betabayes, sim_simple)
-loo_compare(m1$loo(), m2$loo()) ## comparison should favor m1
+## ## simulate data from the model to assess whether the models can be fit.
+## sim_simple <- one_participant |>
+##   sim_simple_betabinomial()
+## m1 <- fit_gumball(simple_betabayes, sim_simple, fixed_param=TRUE)
+## m2 <- fit_gumball(weighted_betabayes, sim_simple)
+## loo_compare(m1$loo(), m2$loo()) ## comparison should favor m1
 
 
-sim_weighted_1 <- one_participant |>
-  sim_weighted_betabinomial()
-m1 <- fit_gumball(simple_betabayes, sim_weighted_1, fixed_param=TRUE)
-m2 <- fit_gumball(weighted_betabayes, sim_weighted_1)
-loo_compare(m1$loo(), m2$loo()) ## comparison should favor m1 or be inconclusive
+## sim_weighted_1 <- one_participant |>
+##   sim_weighted_betabinomial()
+## m1 <- fit_gumball(simple_betabayes, sim_weighted_1, fixed_param=TRUE)
+## m2 <- fit_gumball(weighted_betabayes, sim_weighted_1)
+## loo_compare(m1$loo(), m2$loo()) ## comparison should favor m1 or be inconclusive
 
 
-sim_weighted_2 <- one_participant |>
-  sim_weighted_betabinomial(log_weight_delta = 1)
-m1 <- fit_gumball(simple_betabayes, sim_weighted_2, fixed_param=TRUE)
-m2 <- fit_gumball(weighted_betabayes, sim_weighted_2)
-loo_compare(m1$loo(), m2$loo()) ## comparison should favor m2
+## sim_weighted_2 <- one_participant |>
+##   sim_weighted_betabinomial(log_weight_delta = 1)
+## m1 <- fit_gumball(simple_betabayes, sim_weighted_2, fixed_param=TRUE)
+## m2 <- fit_gumball(weighted_betabayes, sim_weighted_2)
+## loo_compare(m1$loo(), m2$loo()) ## comparison should favor m2
 
 
 
-sim_weighted_3 <- one_participant |>
-  sim_weighted_betabinomial(log_weight_delta = 2)
-m1 <- fit_gumball(simple_betabayes, sim_weighted_3, fixed_param=TRUE)
-m2 <- fit_gumball(weighted_betabayes, sim_weighted_3)
-loo_compare(m1$loo(), m2$loo()) ## comparison should favor m2
+## sim_weighted_3 <- one_participant |>
+##   sim_weighted_betabinomial(log_weight_delta = 2)
+## m1 <- fit_gumball(simple_betabayes, sim_weighted_3, fixed_param=TRUE)
+## m2 <- fit_gumball(weighted_betabayes, sim_weighted_3)
+## loo_compare(m1$loo(), m2$loo()) ## comparison should favor m2
 
+
+
+
+x <- data_patients |>
+  head(10) |>
+  group_by(ID) |>
+  group_modify(function(data, participant) {
+    m1 <- fit_betabayes(simple_betabayes, data, fixed_param = TRUE)
+    m2 <- fit_betabayes(weighted_betabayes, data)
+    distinct(data, Condition) |>
+      mutate(loo = list(loo_compare(m1$loo(), m2$loo())),
+             yrep = list(draws_df(m1, "y_rep")))
+  })
 
 
 
 
 ### fit them to one dataset (don't forget to explore the data first!)
-m1 <- fit_gumball(simple_betabayes, one_participant, fixed_param=TRUE)
-m2 <- fit_gumball(weighted_betabayes, one_participant)
-m3 <- fit_gumball(weighted_temp_betabayes, one_participant)
+## m1 <- fit_gumball(simple_betabayes, one_participant, fixed_param=TRUE)
+## m2 <- fit_gumball(weighted_betabayes, one_participant)
+## m3 <- fit_gumball(weighted_temp_betabayes, one_participant)
 loo_compare(m1$loo(), m2$loo(), m3$loo())
 
 posterior <- m2$draws(variable = c("log_weight_mu", "log_weight_delta"))
