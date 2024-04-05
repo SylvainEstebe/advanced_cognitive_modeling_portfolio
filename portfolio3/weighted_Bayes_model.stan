@@ -51,7 +51,7 @@ generated quantities {
     real belief;
     belief = inv_logit(bias + w1*logit(FirstRating_scaled[t])+w2*logit(GroupRating_scaled[t]));
     log_lik[t] = binomial_lpmf(SecondRating[t]-1 | 7, belief);
-    y_rep[t] = binomial_rng(7,belief);
+    y_rep[t] = 1 + binomial_rng(7,belief);
   }
 }
 
