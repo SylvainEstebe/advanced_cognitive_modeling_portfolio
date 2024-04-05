@@ -46,6 +46,8 @@ weighted_betabayes <- cmdstan_model("portfolio3/betabinomial-weighted-single.sta
 simple_bayes <- cmdstan_model("portfolio3/simple_Bayes_model.stan")
 weighted_bayes <- cmdstan_model("portfolio3/weighted_Bayes_model.stan")
 
+betashift <- cmdstan_model("portfolio3/betashift.stan")
+
 #weighted_temp_betabayes <- cmdstan_model("portfolio3/betabinomial-weighted-single-temp.stan")
 
 fit_betabayes <- function(model, data, lb = 1, ub = 8, fixed_param=FALSE, iter=100) {
@@ -77,7 +79,20 @@ fit_bayes <- function(model, data, iter=100) {
         parallel_chains = 4,
         adapt_delta=.95
     )
+}
 
+fit_betashift <- function(model, data, iter=100) {
+    model$sample(
+        data = list(
+            N = nrow(data),
+            FirstRating = data$FirstRating,
+            GroupRating = data$GroupRating,
+            SecondRating = data$SecondRating
+        ),
+        iter_sampling=iter,
+        parallel_chains = 4,
+        adapt_delta=.95
+    )
 }
 
 ## ## simulate data from the model to assess whether the models can be fit.
@@ -115,7 +130,8 @@ model_names <- c(
   "Beta-Binomial (Simple)",
   "Beta-Binomial (Weighted)",
   "Add-logits (Simple)",
-  "Add-logits (weighted)"
+  "Add-logits (weighted)",
+  "Beta Shift"
 )
 
 results <- data_patients |>
@@ -126,12 +142,18 @@ results <- data_patients |>
     m2 <- fit_betabayes(weighted_betabayes, data)
     m3 <- fit_bayes(simple_bayes, data)
     m4 <- fit_bayes(weighted_bayes, data)
-    models <- list(m1,m2,m3,m4
-                   )
+    m5 <- fit_betashift(betashift, data)
+    models <- list(m1, m2, m3, m4, m5)
+    loo_result <- map(models, \(x) x$loo()) |>
+      loo_compare() |>
+      as_tibble(rownames = NA) |>
+      rownames_to_column() |>
+      rename(model = rowname) |>
+      arrange(model)
+    y_rep <- map(models, \(x) as_draws_df(x$draws("y_rep")))
     distinct(data, Condition) |>
-      mutate(loo   = list(rownames_to_column(as_tibble(loo_compare(map(models, \(x) x$loo())), rownames = NA)) |>
-                            rename(model = rowname)),
-             y_rep = list(map(models, \(x) as_draws_df(x$draws("y_rep")))))
+      mutate(loo = list(loo_result),
+             y_rep = list(y_rep))
   }) |>
   ungroup()
 
@@ -158,7 +180,7 @@ y <- data_patients |>
 
 yrep <- unnest(results, c(loo, y_rep)) |>
   select(-c(elpd_diff, se_diff, elpd_loo, se_elpd_loo, p_loo, se_p_loo, looic, se_looic)) |>
-  mutate(yrep = map(y_rep, \(x) spread_draws(x, y_rep[trial], ndraws=10))) |>
+  mutate(yrep = map(y_rep, \(x) spread_draws(x, y_rep[trial], ndraws=5))) |>
   select(-y_rep) |>
   unnest(yrep)
 
