@@ -38,9 +38,9 @@ model {
 generated quantities {
     // Likelihood per sample
     vector[N] log_lik;
-    vector[N] y_rep;
+    array[N] real y_rep;
     for (i in 1:N){
         log_lik[i] = beta_lpdf(mu1[i] | a[i], b[i]);
-        y_rep[i] = min(8.0, max(1.0, round(beta_rng(a[i], b[i]) * 9)));
+        y_rep[i] = fmin(8, fmax(1, round(beta_rng(a[i], b[i]) * 9)));
     }
 }
