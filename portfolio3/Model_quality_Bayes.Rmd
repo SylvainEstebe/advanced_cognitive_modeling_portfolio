@@ -1,0 +1,297 @@
+---
+title: 'Model quality: Simple and Weighted Bayes'
+author: "Klara Krøyer Fomsgaard"
+date: "2024-04-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##### Setup
+```{r}
+set.seed(1998)
+setwd('~/Exam_MSc/Laura CogMod/Portfolio3/Own_files')
+
+pacman::p_load(extraDistr, tidyverse, truncnorm, cascsim)
+pacman::p_load(tidyverse,
+               here,
+               posterior,
+               cmdstanr,
+               brms, 
+               tidybayes, 
+               loo, job,
+               bayesplot,
+               ggpubr,
+               extrafont)
+```
+
+## ------- SIMPLE BAYES ------- 
+
+### Simulate data for a single agent 
+```{r}
+# --- Source the function for creating data
+source('./Bayes_sim.R')
+
+# --- Simulate data for 1 agent
+singleParticipant_simpleBayes <- Simple_Bayes_Agent(trials = 100, # Number of trials
+                   rate_own = 0.6,# Own rate - used for simulating the initial rating for the individual (Source 1)
+                   rate_group = 0.4, # Group rate - used for simulating the initial rating for the group (Source 2)
+                   bias = 1) # Bias used when making the second rating
+
+singleParticipant_simpleBayes$ID <- 2
+```
+
+```{r}
+# --- Plot over simulated ratings: Simple Bayes
+
+# First rating
+sim_first_plot <- singleParticipant_simpleBayes %>% 
+  ggplot()+
+  geom_histogram(aes(FirstRating_s1), fill = 'darkcyan',alpha = .8) +
+  theme_minimal() +
+  labs(title = "First Rating", x = "Ratings", y = "Count")+
+  theme(text=element_text(size=11,  family="Georgia"))
+
+# Group rating
+sim_group_plot <- singleParticipant_simpleBayes %>% 
+  ggplot()+
+  geom_histogram(aes(GroupRating_s2), fill = 'darkcyan',alpha = .8) +
+  theme_minimal() +
+  labs(title = "Group Rating", x = "Ratings", y = "Count")+
+  theme(text=element_text(size=11,  family="Georgia"))
+
+# Second rating
+sim_second_plot <- singleParticipant_simpleBayes %>% 
+  ggplot()+
+  geom_histogram(aes(SecondRating_predicted), fill = 'darkcyan',alpha = .8) +
+  theme_minimal() +
+  labs(title = "Second Rating", x = "Ratings", y = "Count")+
+  theme(text=element_text(size=11,  family="Georgia"))
+
+# Collect in one figure
+figure <- ggarrange(sim_first_plot, sim_second_plot, sim_group_plot,
+                    labels = c("A", "B", "C"),
+                    ncol = 3, nrow = 1)
+
+
+figure
+```
+
+### Model fitting
+#### Extract data for STAN
+```{r}
+# fixing it to be STAN format
+simple_data_list <- list(
+  trials = nrow(singleParticipant_simpleBayes),
+  FirstRating = singleParticipant_simpleBayes$FirstRating_s1,
+  GroupRating = singleParticipant_simpleBayes$GroupRating_s2,
+  SecondRating = singleParticipant_simpleBayes$SecondRating_predicted
+)
+```
+
+#### Load STAN model
+```{r}
+# Loading model
+file_simple <- file.path("./simple_Bayes_model.stan")
+simple_model <- cmdstan_model(file_simple, 
+                     cpp_options = list(stan_threads = TRUE),
+                     stanc_options = list("O1"))
+```
+
+#### --- Fit model to simulated data
+```{r}
+samples_simple <- simple_model$sample(
+  data = simple_data_list,
+  seed = 123,
+  chains = 4,
+  parallel_chains = 2,
+  threads_per_chain = 2,
+  iter_warmup = 1000,
+  iter_sampling = 2000,
+  refresh = 0,
+  max_treedepth = 20,
+  adapt_delta = 0.99,
+)
+```
+#### Inspect model fit
+```{r}
+# Model diagnostics
+samples_simple$cmdstan_diagnose()
+
+# Trace plots
+trace <- mcmc_trace(samples_simple$draws("bias"))
+
+# Save samples from the posterior
+draws_simple <- as_draws_df(samples_simple$draws()) 
+head(draws_simple)
+
+# Prior-Posterior update plot
+simple_sim_pp_update <- ggplot() +
+  geom_density(aes(draws_simple$bias), fill = "darkcyan", alpha = 0.5, color = "darkcyan") + ### posterior from model 
+  geom_density(aes(rnorm(4000,0,2)), fill = "grey", alpha = 0.5, color = "grey") + ### just directly simulated as it isnt nested in the model 
+  geom_vline(xintercept = 1)+
+  xlab("Rate") +
+  ylab("Density") +
+  labs(title="Prior Posterior Check, Bias", subtitle = "Simple Bayes") +
+  theme_minimal()+
+  theme(text=element_text(size=11,  family="Georgia"))+
+  xlim(-5,5)
+
+results_plot <- ggarrange(trace, simple_sim_pp_update,
+                    labels = c("A", "B"),
+                    ncol = 1, nrow = 2)
+```
+
+## ------ WEIGHTED BAYES ------
+This model is an extension of the simple Bayes, but it includes weights for each source.
+
+### Simulate a weighted Bayes agent
+```{r}
+trials <- 100 # Number of trials
+rate_group <- .4 # Group rate - used for simulating the initial rating for the group (Source 2)
+rate_own <- .6 # Own rate - used for simulating the initial rating for the individual (Source 1)
+bias <- 1 # Bias for the participant when making the second rating
+
+w1 <- .6 # Weight for Source 1
+w2 <- .4 # Weight for Source 2
+
+Weighted_Bayes <- Weighted_Bayes_Agent(trials = trials,
+                     rate_own = rate_own,
+                     rate_group = rate_group,
+                     bias = bias,
+                     w1 = w1, 
+                     w2 = w2)
+```
+
+```{r}
+# --- Plot over simulated ratings: Weighted Bayes
+
+# First rating
+weight_first_plot <- Weighted_Bayes %>% 
+  ggplot()+
+  geom_histogram(aes(FirstRating_s1), fill = 'darkcyan',alpha = .8) +
+  theme_minimal() +
+  labs(title = "First Rating", x = "Ratings", y = "Count")+
+  theme(text=element_text(size=11,  family="Georgia"))
+
+# Group rating
+weight_group_plot <- Weighted_Bayes %>% 
+  ggplot()+
+  geom_histogram(aes(GroupRating_s2), fill = 'darkcyan',alpha = .8) +
+  theme_minimal() +
+  labs(title = "Group Rating", x = "Ratings", y = "Count")+
+  theme(text=element_text(size=11,  family="Georgia"))
+
+# Second rating
+weight_second_plot <- Weighted_Bayes %>% 
+  ggplot()+
+  geom_histogram(aes(SecondRating_predicted), fill = 'darkcyan',alpha = .8) +
+  theme_minimal() +
+  labs(title = "Second Rating", x = "Ratings", y = "Count")+
+  theme(text=element_text(size=11,  family="Georgia"))
+
+# Collect in one figure
+figure_weight <- ggarrange(weight_first_plot, weight_group_plot, weight_second_plot,
+                    labels = c("A", "B", "C"),
+                    ncol = 3, nrow = 1)
+
+
+figure_weight
+```
+
+
+### Fit model: Weighted Bayes to simulated data
+
+#### Extract data for STAN
+```{r}
+# fixing it to be stan format
+weighted_data_list <- list(
+  trials = nrow(Weighted_Bayes),
+  FirstRating = Weighted_Bayes$FirstRating_s1,
+  GroupRating = Weighted_Bayes$GroupRating_s2,
+  SecondRating = Weighted_Bayes$SecondRating_predicted
+)
+```
+
+#### Load STAN model
+```{r}
+# Loading model
+file_weighted <- file.path("./weighted_Bayes_model.stan")
+model_weighted <- cmdstan_model(file_weighted, 
+                     cpp_options = list(stan_threads = TRUE),
+                     stanc_options = list("O1"))
+```
+
+```{r}
+# Fit model
+samples_weighted <- model_weighted$sample(
+  data = weighted_data_list,
+  seed = 123,
+  chains = 4,
+  parallel_chains = 2,
+  threads_per_chain = 2,
+  iter_warmup = 1000,
+  iter_sampling = 2000,
+  refresh = 0,
+  max_treedepth = 20,
+  adapt_delta = 0.99,
+)
+```
+
+```{r, warning = FALSE}
+# Save samples from the posterior
+draws_weighted <- as_draws_df(samples_weighted$draws()) 
+head(draws_weighted)
+
+# Trace plots
+trace_bias <- mcmc_trace(samples_weighted$draws("bias"))
+trace_w1 <- mcmc_trace(samples_weighted$draws("w1"))
+trace_w2 <- mcmc_trace(samples_weighted$draws("w2"))
+
+ggarrange(trace_bias, trace_w1, trace_w2,
+                    labels = c("A", "B", "C"),
+                    ncol = 1, nrow = 3)
+
+# --- Plots: Prior Posterior update checks
+weighted_pp_update_bias <- ggplot() +
+  geom_density(aes(draws_weighted$bias), fill = "darkcyan", alpha = 0.5, color = "darkcyan") + ### posterior from model 
+  geom_density(aes(rnorm(4000,0,2)), fill = "grey", alpha = 0.5, color = "grey") + ### just directly simulated as it isnt nested in the model 
+  geom_vline(xintercept = 1)+
+  xlab("Rate") +
+  ylab("Density") +
+  labs(title="Prior Posterior Check, Bias", subtitle = "Weighted Bayes") +
+  theme_minimal()+
+  theme(text=element_text(size=11,  family="Georgia"))+
+  xlim(-5,5)
+
+# Prior-Posterior update plot - W1
+weighted_pp_update_w1 <- ggplot() +
+  geom_density(aes(draws_weighted$w1), fill = "darkcyan", alpha = 0.5, color = "darkcyan") + ### posterior from model 
+  geom_density(aes(rbeta(4000,2,2)), fill = "grey", alpha = 0.5, color = "grey") + ### just directly simulated as it isnt nested in the model 
+  geom_vline(xintercept = .6)+
+  xlab("Rate") +
+  ylab("Density") +
+  labs(title="Prior Posterior Check, W1", subtitle = "Weighted Bayes") +
+  theme_minimal()+
+  theme(text=element_text(size=11,  family="Georgia"))+
+  xlim(0,1)
+
+# Prior-Posterior update plot - W2
+weighted_pp_update_w2 <- ggplot() +
+  geom_density(aes(draws_weighted$w2), fill = "darkcyan", alpha = 0.5, color = "darkcyan") + ### posterior from model 
+  geom_density(aes(rbeta(4000,2,2)), fill = "grey", alpha = 0.5, color = "grey") + ### just directly simulated as it isnt nested in the model 
+  geom_vline(xintercept = .4)+
+  xlab("Rate") +
+  ylab("Density") +
+  labs(title="Prior Posterior Check, W2", subtitle = "Weighted Bayes") +
+  theme_minimal()+
+  theme(text=element_text(size=11,  family="Georgia"))+
+  xlim(0,1)
+
+weighted_pp <- ggarrange(weighted_pp_update_bias, weighted_pp_update_w1, weighted_pp_update_w2,
+                    labels = c("A", "B", "C"),
+                    ncol = 3, nrow = 1)
+
+```
