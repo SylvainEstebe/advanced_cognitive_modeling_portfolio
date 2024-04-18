@@ -1,4 +1,6 @@
 
+source("/work/Home/R/init.R")
+setwd("/work/Home/advanced_cognitive_modeling_portfolio1")
 
 library(tidyverse)
 # library(brms)
@@ -183,10 +185,17 @@ ggplot(y) +
   geom_freqpoly(aes(y_rep, after_stat(density), group = str_c(.draw, model), color = model), data = yrep, binwidth=1, alpha=.5) +
   geom_freqpoly(aes(SecondRating, after_stat(density)), binwidth=1) +
   scale_color_discrete(labels = model_names) +
-  scale_x_continuous(breaks = seq(0,8), limits = c(1, 8)) +
+  scale_x_continuous(breaks = seq(1,8)
+                     #, limits = c(0, 10)
+                     ) +
+  theme_tufte() +
+  labs(x = "Score", y = "", color = "Model:") +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        legend.position = "top") +
   facet_wrap(~ID, scales="free_y")
 
-ggsave("portfolio3/posterior_predictive.png", width="16", height="16")
+ggsave("portfolio3/posterior_predictive.png", width=10, height=10)
 
 ################
 ## model comparison result, by ID
