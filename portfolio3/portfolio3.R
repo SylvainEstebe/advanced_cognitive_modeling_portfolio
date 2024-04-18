@@ -1,9 +1,13 @@
 
 
 library(tidyverse)
-library(brms)
+# library(brms)
 library(cmdstanr)
-
+library(loo)
+library(posterior)
+library(tidybayes)
+library(ggthemes)
+options(mc.cores = 8)
 
 data_patients <- read_csv("portfolio3/data/Simonsen_clean.csv")
 
@@ -135,7 +139,7 @@ model_names <- c(
 )
 
 results <- data_patients |>
-  filter(ID %in% c("201", "203")) |>
+  # filter(ID %in% c("201", "203")) |>
   group_by(ID) |>
   group_modify(function(data, participant) {
     m1 <- fit_betabayes(simple_betabayes, data, fixed_param = TRUE)
@@ -143,7 +147,7 @@ results <- data_patients |>
     m3 <- fit_bayes(simple_bayes, data)
     m4 <- fit_bayes(weighted_bayes, data)
     m5 <- fit_betashift(betashift, data)
-    print(m2)
+    # print(m2)
     models <- list(m1, m2, m3, m4, m5)
     loo_result <- map(models, \(x) x$loo()) |>
       loo_compare() |>
@@ -158,24 +162,14 @@ results <- data_patients |>
   }) |>
   ungroup()
 
-## model comparison result, by ID
-## unnest(x, loo) |>
-##   mutate(ymin = elpd_diff - 2 * se_diff,
-##          ymax = elpd_diff + 2 * se_diff) |>
-##   mutate(top_model = model[])
-##   ggplot(aes(ID, elpd_diff, ymin=ymin, ymax=ymax, color=model)) +
-##   geom_pointrange()
+write_rds(results, "portfolio3/results_model_comparison.rds")
 
+results <- read_rds("portfolio3/results_model_comparison.rds")
 
-unnest(results, loo) |>
-  filter(elpd_diff == 0) |>
-  ggplot(aes(model)) +
-  geom_histogram(stat="count")
-
-
+###################
 ## posterior predictive check
 y <- data_patients |>
-  filter(ID %in% c("201", "203")) |>
+  #filter(ID %in% c("201", "203")) |>
   select(ID, Condition, FaceID, SecondRating) |>
   mutate(trial = FaceID + 1)
 
@@ -190,4 +184,27 @@ ggplot(y) +
   geom_freqpoly(aes(SecondRating, after_stat(density)), binwidth=1) +
   scale_color_discrete(labels = model_names) +
   scale_x_continuous(breaks = seq(0,8), limits = c(1, 8)) +
-  facet_wrap(~ID)
+  facet_wrap(~ID, scales="free_y")
+
+ggsave("portfolio3/posterior_predictive.png", width="16", height="16")
+
+################
+## model comparison result, by ID
+unnest(results, loo) |>
+  select(-y_rep) |>
+  mutate_at(vars(!c(ID, Condition, model)), as.numeric) |>
+  arrange(ID, desc(elpd_loo)) |>
+  mutate(ymin = elpd_loo - 2 * se_diff,
+         ymax = elpd_loo + 2 * se_diff) |>
+  group_by(ID) |>
+  mutate(rank = 1:n(),
+         size = ifelse(rank == 1, 3, 1)) |>
+  ggplot(aes(as.factor(ID), elpd_loo, color = model)) +
+  geom_pointrange(aes(ymin=ymin, ymax=ymax)) +
+  scale_color_discrete(labels = model_names) +
+  theme_tufte() +
+  labs(x = "Participant", y = "LOOIC ± 2 SE", color = "Model:") +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.position = "top")
+ggsave("portfolio3/model_comparison.png", width=8, height=6)
