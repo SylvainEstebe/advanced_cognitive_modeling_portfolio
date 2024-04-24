@@ -16,3 +16,4 @@ portfolio3/betabinomial-weighted-single-temp
 portfolio3/simple_Bayes_model
 portfolio3/weighted_Bayes_model
 portfolio3/betashift
+portfolio3/*.rds

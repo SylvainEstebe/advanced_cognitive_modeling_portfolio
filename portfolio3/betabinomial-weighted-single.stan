@@ -26,8 +26,8 @@ transformed data {
 }
 
 parameters {
-  real log_weight_mu;
-  real log_weight_delta;
+  real log_weight_1;
+  real log_weight_2;
   // real<lower=0> weight1;
   // real<lower=0> weight2;
 }
@@ -37,17 +37,17 @@ transformed parameters {
   vector[N] shape2;
   // real<lower=0> weight1 = exp(log_weight_mu + log_weight_delta/2);
   // real<lower=0> weight2 = exp(log_weight_mu - log_weight_delta/2);
-  real<lower=0> weight1 = exp(log_weight_mu);
-  real<lower=0> weight2 = exp(log_weight_delta);
+  real<lower=0> weight1 = exp(log_weight_1);
+  real<lower=0> weight2 = exp(log_weight_2);
  // how many ..
-  shape1 = (FirstRating-lb) ^ weight1 + (GroupRating-lb) ^ weight2;
+  shape1 = (FirstRating-lb) * weight1 + (GroupRating-lb) * weight2;
   // out of how many total
-  shape2 = rep_vector((ub-lb) ^ weight1 + (ub-lb) ^ weight2, N);
+  shape2 = rep_vector((ub-lb) * weight1 + (ub-lb) * weight2, N);
 }
 
 model {
-  log_weight_mu    ~ normal(0, 2);
-  log_weight_delta ~ normal(0, 2);
+  log_weight_1 ~ normal(0, 2);
+  log_weight_2 ~ normal(0, 2);
   // weight1 ~ cauchy(1, 30);
   // weight2 ~ cauchy(1, 30);
 
