@@ -16,13 +16,15 @@ standata <- list(
   features = unnest(df, features) |> select(f1:f5) |> as.matrix(),
   true_category = df$true_category + 1,
   decision = df$decision + 1,
-  trial_start_sampling = 1 + first(which(df$true_category == lead(df$true_category)))
+  trial_start_sampling = 1 + first(which(df$true_category == lead(df$true_category))),
+  weight_prior_precision = 0.1
 )
 
 
 
 gcm_single <- cmdstan_model("portfolio4/GCM_single.stan")
+
 s <- gcm_single$sample(data = standata,
-                       iter_warmup = 100,
-                       iter_sampling = 100,
+                       iter_warmup = 500,
+                       iter_sampling = 500,
                        parallel_chains = 4)

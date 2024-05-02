@@ -66,8 +66,9 @@ gcm <- function(weights, scaling, features, memory_danger, memory_friendly) {
   return(rbinom(1, 1, theta))
 }
 
-weights <- c(1,0,0,0,0)
-scaling <- 3
+weights <- c(1, 0, 0, 0, 0)
+# weights <- c(0.8,0.05,0.05,0.05,0.05)
+scaling <- 5
 memory_danger <- tribble(~f1, ~f2, ~f3, ~f4, ~f5)
 memory_friendly <- tribble(~f1, ~f2, ~f3, ~f4, ~f5)
 
