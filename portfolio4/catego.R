@@ -5,7 +5,7 @@ pacman::p_load(tidyverse,
                brms, tidybayes)
 
 #load simulation data
-source("malte_forward_model.R")
+source("forward_GCM.R")
 
 
 # load real data
@@ -49,14 +49,17 @@ data_xp <-  tibble (
   feedback = df_real$correct
 )
 
+df
 # create dataframe for data simulation
 data_sim <-  tibble (
   trial = df$trial,
-  feature = df$stimulus,
-  decision = df$correct,
-  feedback = df$correct)
+  feature = df$features,
+  decision = df$decision,
+  feedback = df$feedback
+)
 
 # plot performance
+
 
 
 # fit the model
