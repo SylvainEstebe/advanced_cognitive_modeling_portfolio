@@ -16,8 +16,8 @@ standata <- list(
   features = unnest(df, features) |> select(f1:f5) |> as.matrix(),
   true_category = df$true_category + 1,
   decision = df$decision + 1,
-  trial_start_sampling = 1 + first(which(df$true_category == lead(df$true_category))),
-  weight_prior_precision = 0.1
+  trial_start_sampling = 1 + first(which(df$true_category != lag(df$true_category))),
+  weight_prior_precision = 2
 )
 
 
