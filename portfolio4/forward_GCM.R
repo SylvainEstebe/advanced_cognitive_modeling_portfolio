@@ -3,8 +3,10 @@
 library(tidyverse)
 
 
-n_trial <- 100
+n_trial <- 32 # Should be integer multiple of 32!
 n_features <- 5
+
+nrep = n_trial/32
 
 # TODO: do each stim combination once instead of sampling independently
 # TODO: speed up simulation by not copying the memory data
@@ -19,6 +21,11 @@ df <- tibble(
   decision = NA,
   feedback = NA)
 
+combs = tibble(expand.grid(replicate(5, 0:1, simplify = FALSE))) %>%
+  rename(f1 = Var1, f2= Var2, f3 = Var3, f4 = Var4, f5 = Var5) %>% 
+  slice(rep(1:n(), each = nrep))
+
+df$features = unname(split(combs,seq(nrow(combs))))
 
 
 feedback_easy <- function(features, decision) {
@@ -86,3 +93,4 @@ for (i in 1:n_trial) {
     memory_friendly <- bind_rows(memory_friendly, pluck(df, "features", i))
   }
 }
+
