@@ -3,9 +3,11 @@
 library(tidyverse)
 
 
-n_trial <- 32
+n_trial <- 100
 n_features <- 5
 
+# TODO: do each stim combination once instead of sampling independently
+# TODO: speed up simulation by not copying the memory data
 
 df <- tibble(
   trial = 1:n_trial,
