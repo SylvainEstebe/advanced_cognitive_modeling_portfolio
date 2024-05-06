@@ -48,16 +48,22 @@ model {
   scaling ~ cauchy(0,2);
 
   for (t in 1:N_trials) {
-    decision[t] ~ categorical(softmax(theta[,t]));
+    decision[t] ~ categorical_logit(theta[,t]);
   }
 }
 
 
-// generated quantities {
-//   vector[N_trials] log_lik;
-//   array[N_trials] int yrep;
-//   for (t in 1:N_trials) {
-//     yrep[t] = categorical_logit_rng(theta[,t]);
-//     log_lik[t] = categorical_logit_lpmf(decision[t] | theta[,t]);
-//   }
-// }
+generated quantities {
+  vector[N_trials] log_lik;
+  array[N_trials] int yrep;
+
+  simplex[N_features] weights_prior;
+  real scaling_prior;
+  weights_prior = dirichlet_rng(rep_vector(weight_prior_precision, N_features));
+  scaling_prior = abs(cauchy_rng(0, 2));
+
+  for (t in 1:N_trials) {
+    yrep[t] = categorical_logit_rng(theta[,t]);
+    log_lik[t] = categorical_logit_lpmf(decision[t] | theta[,t]);
+  }
+}
