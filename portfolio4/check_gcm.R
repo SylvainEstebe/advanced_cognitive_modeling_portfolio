@@ -26,33 +26,38 @@ standata <- list(
 gcm_single <- cmdstan_model("portfolio4/GCM_single.stan")
 
 s <- gcm_single$sample(data = standata,
-                       iter_warmup = 500,
-                       iter_sampling = 500,
+                       iter_warmup = 1000,
+                       iter_sampling = 2000,
                        parallel_chains = 4)
 
 
 
 mcmc_pairs(s$draws(c("scaling", "weights")))
+ggsave("portfolio4/gcm_32_pairplot.png")
+
+mcmc_trace(s$draws(c("scaling", "weights")))
+ggsave("portfolio4/gcm_32_traceplot.png")
 
 
+## prior_cauchy <- tibble(x = seq(0, 20, by = 0.01),
+##                        y = dcauchy(x, 0, 2),
+##                        source = "prior")
+## s$draws("scaling", format = "df") |>
+##   mutate(source = "posterior") |>
+##   ggplot() +
+##   geom_density(aes(scaling, color = source)) +
+##   geom_line(aes(x=x,y=y, color=source), data = prior_cauchy) +
+##   theme_minimal()
 
-prior_cauchy <- tibble(x = seq(0, 20, by = 0.01),
-                       y = dcauchy(x, 0, 2),
-                       source = "prior")
-s$draws("scaling", format = "df") |>
-  mutate(source = "posterior") |>
-  ggplot() +
-  geom_density(aes(scaling, color = source)) +
-  geom_line(aes(x=x,y=y, color=source), data = prior_cauchy) +
-  theme_minimal()
 
-
-s$draws(c("weights", "weights_prior"), format = "df") |>
+s$draws(c("scaling", "scaling_prior"), format = "df") |>
   pivot_longer(starts_with("scaling")) |>
   mutate(name = ifelse(name == "scaling", "posterior", "prior")) |>
+  #filter(value < 60) |>
   ggplot() +
   geom_density(aes(value, color = name), n = 2**11) +
-  coord_cartesian(xlim = c(0, 100))
+  coord_cartesian(xlim = c(0, 50))
+ggsave("portfolio4/gcm_32_priorposterior_scaling.png")
 
 
 s$draws(c("weights", "weights_prior"), format = "df") |>
@@ -60,4 +65,7 @@ s$draws(c("weights", "weights_prior"), format = "df") |>
   mutate(source = ifelse(source == "weights", "posterior", "prior")) |>
   ggplot() +
   geom_density(aes(value, color = source)) +
-  facet_wrap(~feature)
+  facet_grid(~feature, labeller = label_both) +
+  theme_minimal() +
+  labs(title = "Prior-Posterior update plot, n=32")
+ggsave("portfolio4/gcm_32_priorposterior_weights.png")
