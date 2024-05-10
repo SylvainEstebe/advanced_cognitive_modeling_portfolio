@@ -2,11 +2,12 @@
 library(tidyverse)
 library(cmdstanr)
 library(bayesplot)
+library(glue)
 
 
+## n_trial = 32 * 5
 
 source("portfolio4/forward_GCM.R")
-
 df <- df |>
   mutate(true_category = ifelse(feedback==1, decision, 1-decision))
 
@@ -18,7 +19,8 @@ standata <- list(
   true_category = df$true_category + 1,
   decision = df$decision + 1,
   trial_start_sampling = 1 + first(which(df$true_category != lag(df$true_category))),
-  weight_prior_precision = 1
+  weight_prior_precision = 1,
+  prior_only = 0
 )
 
 
@@ -31,12 +33,14 @@ s <- gcm_single$sample(data = standata,
                        parallel_chains = 4)
 
 
+## write_rds(s, glue("portfolio4/gcm_{n_trial}_samples.rds"))
+## s <- read_rds("portfolio4/gcm_160_samples.rds")
 
-mcmc_pairs(s$draws(c("scaling", "weights")))
-ggsave("portfolio4/gcm_32_pairplot.png")
+pairs <- mcmc_pairs(s$draws(c("scaling", "weights")))
+ggsave(glue("portfolio4/gcm_{n_trial}_pairplot.png"), plot = pairs)
 
 mcmc_trace(s$draws(c("scaling", "weights")))
-ggsave("portfolio4/gcm_32_traceplot.png")
+ggsave(glue("portfolio4/gcm_{n_trial}_traceplot.png"))
 
 
 ## prior_cauchy <- tibble(x = seq(0, 20, by = 0.01),
@@ -56,8 +60,9 @@ s$draws(c("scaling", "scaling_prior"), format = "df") |>
   #filter(value < 60) |>
   ggplot() +
   geom_density(aes(value, color = name), n = 2**11) +
-  coord_cartesian(xlim = c(0, 50))
-ggsave("portfolio4/gcm_32_priorposterior_scaling.png")
+  coord_cartesian(xlim = c(0, 50)) +
+  labs(title = glue("Prior-Posterior update plot for scaling, n={n_trial}"))
+ggsave(glue("portfolio4/gcm_{n_trial}_priorposterior_scaling.png"))
 
 
 s$draws(c("weights", "weights_prior"), format = "df") |>
@@ -67,5 +72,42 @@ s$draws(c("weights", "weights_prior"), format = "df") |>
   geom_density(aes(value, color = source)) +
   facet_grid(~feature, labeller = label_both) +
   theme_minimal() +
-  labs(title = "Prior-Posterior update plot, n=32")
-ggsave("portfolio4/gcm_32_priorposterior_weights.png")
+  labs(title = glue("Prior-Posterior update plot for weights, n={n_trial}"))
+ggsave(glue("portfolio4/gcm_{n_trial}_priorposterior_weights.png"))
+
+
+#### attempt at posterior predictive
+
+s$draws("yrep", format = "matrix") %>%
+  ppc_stat(y = df$decision+1,
+                   stat = "mean", binwidth = 0.03) +
+  labs(title = glue("Posterior predictive (average decision), n={n_trial}"))
+ggsave(glue("portfolio4/gcm_{n_trial}_posterior_predictive.png"))
+
+
+s$draws("yrep", format = "matrix") %>%
+  ppc_stat_grouped(y = df$decision+1,
+                   group = df$true_category,
+                   stat = "mean",
+                   binwidth=0.06,
+                   facet_args = list(labeller=as_labeller(\(x) str_c("True category: ", as.numeric(x)+1)))) +
+  labs(title = glue("Posterior predictive (average decision), n={n_trial}"))
+ggsave(glue("portfolio4/gcm_{n_trial}_posterior_predictive_facet.png"))
+
+### prior predictive
+standata_2 <- standata
+standata_2$prior_only <- 1
+prior_s <- gcm_single$sample(data = standata_2,
+                       iter_warmup = 1000,
+                       iter_sampling = 2000,
+                       parallel_chains = 4)
+
+
+prior_s$draws("yrep", format = "matrix") %>%
+  ppc_stat_grouped(y = df$decision+1,
+                   group = df$true_category,
+                   stat = "mean",
+                   binwidth=0.06,
+                   facet_args = list(labeller=as_labeller(\(x) str_c("True category: ", as.numeric(x)+1)))) +
+  labs(title = glue("Prior predictive (average decision), n={n_trial}"))
+ggsave(glue("portfolio4/gcm_{n_trial}_prior_predictive_facet.png"))

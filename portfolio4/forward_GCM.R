@@ -3,7 +3,7 @@
 library(tidyverse)
 
 
-n_trial <- 32 # Should be integer multiple of 32!
+n_trial <- 32# Should be integer multiple of 32!
 n_features <- 5
 
 nrep = n_trial/32
@@ -76,8 +76,8 @@ gcm <- function(weights, scaling, features, memory_danger, memory_friendly) {
 }
 
 weights <- c(1, 0, 0, 0, 0)
-# weights <- c(0.8,0.05,0.05,0.05,0.05)
-scaling <- 5
+## weights <- c(0.8,0.05,0.05,0.05,0.05)
+scaling <- 10
 memory_danger <- tribble(~f1, ~f2, ~f3, ~f4, ~f5)
 memory_friendly <- tribble(~f1, ~f2, ~f3, ~f4, ~f5)
 

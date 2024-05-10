@@ -7,6 +7,7 @@ data {
   array[N_trials] int decision;
   int trial_start_sampling; // which trial is the first one they've seen examplars from all categories
   real weight_prior_precision;
+  int<lower=0,upper=1> prior_only;
 }
 
 parameters {
@@ -47,8 +48,10 @@ model {
   weights ~ dirichlet(rep_vector(weight_prior_precision, N_features));
   scaling ~ cauchy(0,2);
 
-  for (t in 1:N_trials) {
-    decision[t] ~ categorical_logit(theta[,t]);
+  if (!prior_only) {
+    for (t in 1:N_trials) {
+      decision[t] ~ categorical_logit(theta[,t]);
+    }
   }
 }
 
