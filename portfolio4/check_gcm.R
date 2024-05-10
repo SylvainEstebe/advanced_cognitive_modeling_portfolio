@@ -91,6 +91,7 @@ s$draws("yrep", format = "matrix") %>%
                    stat = "mean",
                    binwidth=0.06,
                    facet_args = list(labeller=as_labeller(\(x) str_c("True category: ", as.numeric(x)+1)))) +
+  xlim(1,2) +
   labs(title = glue("Posterior predictive (average decision), n={n_trial}"))
 ggsave(glue("portfolio4/gcm_{n_trial}_posterior_predictive_facet.png"))
 
@@ -109,5 +110,6 @@ prior_s$draws("yrep", format = "matrix") %>%
                    stat = "mean",
                    binwidth=0.06,
                    facet_args = list(labeller=as_labeller(\(x) str_c("True category: ", as.numeric(x)+1)))) +
+   xlim(1,2) +
   labs(title = glue("Prior predictive (average decision), n={n_trial}"))
 ggsave(glue("portfolio4/gcm_{n_trial}_prior_predictive_facet.png"))
