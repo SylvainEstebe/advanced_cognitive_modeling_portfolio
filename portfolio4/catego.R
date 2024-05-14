@@ -4,20 +4,19 @@ pacman::p_load(tidyverse,
                cmdstanr,
                brms, tidybayes)
 
-#load simulation data
-source("forward_GCM.R")
-
 
 # load real data
 df_real <- read.csv("AlienData.csv")
+idxKeep = rep(NA,nrow(df_real))
+for (i in 1:nrow(df_real)){
+  idxKeep[i] = !grepl("pt",df_real$stimulus[i])
+}
+df_real = df_real[idxKeep,]
 
 
 # transform the empirical data
 for (i in 1:nrow(df_real)){
-  
   df_real$response[i] = ifelse(df_real$response[i] %in% c(4, 3), 1, 0)
-  
-  
 }
 
 # transform name of jpg
@@ -46,21 +45,11 @@ data_xp <-  tibble (
   trial = df_real$trial,
   feature = A,
   decision = df_real$response,
-  feedback = df_real$correct
+  true_category = df_real$dangerous,
+  subject = df_real$subject,
+  session = df_real$session,
+  condition = df_real$condition
 )
 
-df
-# create dataframe for data simulation
-data_sim <-  tibble (
-  trial = df$trial,
-  feature = df$features,
-  decision = df$decision,
-  feedback = df$feedback
-)
 
-# plot performance
-
-
-
-# fit the model
 
