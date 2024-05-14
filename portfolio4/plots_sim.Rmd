@@ -1,0 +1,119 @@
+---
+title: "GCM forward sim"
+author: "Klara Krøyer Fomsgaard"
+date: "2024-05-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+pacman::p_load(tidyverse,ggpubr,wesanderson)
+source("~/Exam_MSc/Advanced_Cog_Mod/portfolio_4/forward_GCM_function.R")
+```
+
+# Plotting the simulation
+We plot the simulation with different parametervalues to see how it impacts the performance on the task
+```{r}
+# Scaling = 2
+w_correct_c2 <- Alien_game_task(n_trial = 32,
+                      n_features = 5,
+                      weights = c(1,0,0,0,0),
+                      scaling = 2) %>% 
+  mutate(feedback_acc = cumsum(feedback),ID = "correct_attention")
+
+w_split_c2 <- Alien_game_task(n_trial = 32,
+                      n_features = 5,
+                      weights = c(0.2,0.2,0.2,0.2,0.2),
+                      scaling = 2)%>% 
+  mutate(feedback_acc = cumsum(feedback),ID = "split_attention")
+
+w_wrong_c2 <- Alien_game_task(n_trial = 32,
+                      n_features = 5,
+                      weights = c(0,1,0,0,0),
+                      scaling = 2)%>% 
+  mutate(feedback_acc = cumsum(feedback),ID = "wrong_attention")
+
+
+df_c2 <- rbind(w_correct_c2,w_split_c2,w_wrong_c2)
+# Scaling = 5
+w_correct_c5 <- Alien_game_task(n_trial = 32,
+                      n_features = 5,
+                      weights = c(1,0,0,0,0),
+                      scaling = 5) %>% 
+  mutate(feedback_acc = cumsum(feedback),ID = "correct_attention")
+
+w_split_c5 <- Alien_game_task(n_trial = 32,
+                      n_features = 5,
+                      weights = c(0.2,0.2,0.2,0.2,0.2),
+                      scaling = 5)%>% 
+  mutate(feedback_acc = cumsum(feedback),ID = "split_attention")
+
+w_wrong_c5 <- Alien_game_task(n_trial = 32,
+                      n_features = 5,
+                      weights = c(0,1,0,0,0),
+                      scaling = 5)%>% 
+  mutate(feedback_acc = cumsum(feedback),ID = "wrong_attention")
+
+df_c5 <- rbind(w_correct_c5,w_split_c5,w_wrong_c5)
+
+# Scaling = 10
+w_correct_c10 <- Alien_game_task(n_trial = 32,
+                      n_features = 5,
+                      weights = c(1,0,0,0,0),
+                      scaling = 10) %>% 
+  mutate(feedback_acc = cumsum(feedback),ID = "correct_attention")
+
+w_split_c10 <- Alien_game_task(n_trial = 32,
+                      n_features = 5,
+                      weights = c(0.2,0.2,0.2,0.2,0.2),
+                      scaling = 10)%>% 
+  mutate(feedback_acc = cumsum(feedback),ID = "split_attention")
+
+w_wrong_c10 <- Alien_game_task(n_trial = 32,
+                      n_features = 5,
+                      weights = c(0,1,0,0,0),
+                      scaling = 10)%>% 
+  mutate(feedback_acc = cumsum(feedback),ID = "wrong_attention")
+
+df_c10 <- rbind(w_correct_c10,w_split_c10,w_wrong_c10)
+
+
+
+# Plot
+library(wesanderson)
+my_colors <- wes_palette(3, name = "Zissou1", type = "continuous")
+
+plot_c2 <- ggplot(df_c2, aes(x = trial, y = feedback_acc, color = ID))+
+  geom_line()+
+  ggtitle('Accumulated performance, scaling = 2')+
+  scale_color_manual(values=my_colors)+
+  theme(legend.position="none")+
+  theme_minimal()
+
+plot_c5 <- ggplot(df_c5, aes(x = trial, y = feedback_acc, color = ID))+
+  geom_line()+
+  ggtitle('Accumulated performance, scaling = 5')+
+  scale_color_manual(values=my_colors)+
+ # theme(plot.title=element_text(face="bold"))+
+  theme_minimal()
+
+plot_c10 <- ggplot(df_c10, aes(x = trial, y = feedback_acc, color = ID))+
+  geom_line()+
+  ggtitle('Accumulated performance, scaling = 10')+
+  scale_color_manual(values=my_colors)+
+  #theme(plot.title=element_text(face="bold",size=15))+
+  theme_minimal()
+
+
+plot_c2 <- plot_c2+theme(legend.position = "none")+theme(plot.title=element_text(face="bold",size=9))+ylim(0,28)
+plot_c5 <- plot_c5+theme(legend.position = "none")+theme(plot.title=element_text(face="bold",size=9))+ylim(0,28)
+plot_c10 <- plot_c10+theme(plot.title=element_text(face="bold",size=9))+ylim(0,28)
+
+plot <- ggarrange(plot_c2,plot_c5,plot_c10,ncol = 3, nrow = 1,widths = c(3,3,5))
+annotate_figure(plot, top = text_grob("GCM Forward simulation", 
+               color = "black", face = "bold", size = 12))
+```
+
