@@ -1,3 +1,11 @@
+# Overview
+This repository contains the implementation and analysis for Portfolio 3, which focuses on applying Bayesian models of cognition to real-world data. The assignment leverages data from a social conformity experiment, where the cognitive assessments of individuals, including cogsci students and schizophrenia patients along with controls, are examined.
+
+### Data Source
+The dataset used in this project comes from a social conformity experiment, which studies how individuals integrate their personal intuition about the trustworthiness of faces with social information. For more details on the experiment, refer to the study published on PubMed.
+
+------ 
+
 # Beta-binomial model of gumball guesses
 
 This model has two tricks:
